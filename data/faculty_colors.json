@@ -1,0 +1,38 @@
+[
+  {
+    "faculty": "BK",
+    "color": "#6CC24A"
+  },
+  {
+    "faculty": "AE",
+    "color": "#EC6842"
+  },
+  {
+    "faculty": "AS",
+    "color": "#FFB81C"
+  },
+  {
+    "faculty": "CEG",
+    "color": "#0076C2"
+  },
+  {
+    "faculty": "EEMCS",
+    "color": "#EF60A3"
+  },
+  {
+    "faculty": "IDE",
+    "color": "#E03C31"
+  },
+  {
+    "faculty": "ME",
+    "color": "#00B8C8"
+  },
+  {
+    "faculty": "Other",
+    "color": "#E7E7E7"
+  },
+  {
+    "faculty": "TPM",
+    "color": "#A066AA"
+  }
+]

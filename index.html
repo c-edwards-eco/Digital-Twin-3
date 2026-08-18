@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Digital Twin 3 Database Supremacy</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+</head>
+
+<body>
+
+  <header id="header">
+    <img src="images/whitelogo.png" alt="University Logo" id="logo">
+    <h1></h1>
+  </header>
+
+  <main id="main-content">
+
+    <aside id="sidebar">
+      <h2>Collection Wall Virtual Shelves</h2>
+      <p>This map currently displays the four floors of the collection wall located at the <a
+          href="https://www.tudelft.nl/en/library/">TU Delft Central Library</a>.
+      </p>
+      <p>The shelves were created with a matrix in Excel, and then transformed to a GeoJSON using R.
+      </p>
+      <p> Faculty Expo areas are shaded by default, but <b>catalogue data must be manually uploaded to visualize book placement.</b>
+      </p>
+      <p>The purpose of this map is to visualize the future (re)arrangements of the iconic collection wall.
+      </p>
+    </aside>
+
+    <section id="map-container">
+      <div id="map"></div>
+    </section>
+  </main>
+
+  <footer id="footer">
+    TU Delft Library | Prometheusplein 1, 2628 ZC Delft
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="script.js"></script>
+
+</body>
+
+</html>
