@@ -34,6 +34,8 @@ const shelvesBackGroup = L.layerGroup();
 const placeholderBooksFrontGroup = L.layerGroup();
 const placeholderBooksBackGroup = L.layerGroup();
 
+const expoLabelsFrontGroup = L.layerGroup();
+
 
 // Each side is treated as one complete base layer.
 // This ensures front books only appear with front shelves,
@@ -41,7 +43,8 @@ const placeholderBooksBackGroup = L.layerGroup();
 
 const frontGroup = L.layerGroup([
   shelvesFrontGroup,
-  placeholderBooksFrontGroup
+  placeholderBooksFrontGroup,
+  expoLabelsFrontGroup
 ]);
 
 const backGroup = L.layerGroup([
@@ -205,32 +208,139 @@ async function loadFacultyColors() {
   );
 }
 
+function lightenHexColor(hex, amount = 0.4) {
+  const cleanHex = hex.replace('#', '');
+
+  const r = parseInt(cleanHex.substring(0, 2), 16);
+  const g = parseInt(cleanHex.substring(2, 4), 16);
+  const b = parseInt(cleanHex.substring(4, 6), 16);
+
+  const newR = Math.round(r + (255 - r) * amount);
+  const newG = Math.round(g + (255 - g) * amount);
+  const newB = Math.round(b + (255 - b) * amount);
+
+  return `#${[newR, newG, newB]
+    .map(value => value.toString(16).padStart(2, '0'))
+    .join('')}`;
+}
 
 function getFacultyColor(faculty) {
-  const normalizedFaculty = String(
+  const rawFaculty = String(
     faculty || ''
-  )
+  ).trim();
+
+  const isRecommendation =
+    /\s+Faculty Recommendation$/i.test(rawFaculty);
+
+  const normalizedFaculty = rawFaculty
+    .replace(/\s+Faculty Recommendation$/i, '')
     .trim()
     .toUpperCase();
 
-  // Known faculty
+  let baseColor;
+
   if (
     normalizedFaculty &&
     facultyColorMap.has(normalizedFaculty)
   ) {
-    return facultyColorMap.get(
+    baseColor = facultyColorMap.get(
       normalizedFaculty
+    );
+  } else if (
+    facultyColorMap.has('OTHER')
+  ) {
+    baseColor =
+      facultyColorMap.get('OTHER');
+  } else {
+    baseColor = '#ffffff';
+  }
+
+  if (isRecommendation) {
+    return lightenHexColor(
+      baseColor,
+      0.22
     );
   }
 
-  // Unknown faculty -> Other
-  if (facultyColorMap.has('OTHER')) {
-    return facultyColorMap.get('OTHER');
-  }
+  return baseColor;
+}
 
-  // Final fallback if faculty_colors.json
-  // itself does not contain Other.
-  return '#d9d9d9';
+function addExpoLabels(shelfLayer) {
+  expoLabelsFrontGroup.clearLayers();
+
+  const expoAreas = new Map();
+
+  // Group all reserved shelf polygons by Expo name.
+  shelfLayer.eachLayer(layer => {
+    const feature = layer.feature;
+    const props = feature?.properties || {};
+
+    const reservedName = String(
+      props.reserved_name || ''
+    ).trim();
+
+    // Only actual Expo areas get permanent labels.
+    if (
+      !props.reserved ||
+      !/\s+Expo$/i.test(reservedName)
+    ) {
+      return;
+    }
+
+    if (!expoAreas.has(reservedName)) {
+      expoAreas.set(
+        reservedName,
+        []
+      );
+    }
+
+    expoAreas
+      .get(reservedName)
+      .push(layer);
+  });
+
+
+  // Create ONE label per Expo area,
+  // centered across the entire reserved range.
+  expoAreas.forEach((layers, expoName) => {
+    let bounds = null;
+
+    layers.forEach(layer => {
+      if (!bounds) {
+        bounds = L.latLngBounds(
+          layer.getBounds()
+        );
+      } else {
+        bounds.extend(
+          layer.getBounds()
+        );
+      }
+    });
+
+    if (!bounds) {
+      return;
+    }
+
+    const center =
+      bounds.getCenter();
+
+    const label = L.marker(
+      center,
+      {
+        interactive: false,
+
+        icon: L.divIcon({
+          className: 'expo-label',
+          html: `<div>${expoName}</div>`,
+          iconSize: null
+        })
+      }
+    );
+
+    expoLabelsFrontGroup.addLayer(
+      label
+    );
+  });
 }
 
 function addFacultyLegend() {
@@ -315,7 +425,7 @@ function shelfStyle(feature) {
 
   // Default before catalogue upload,
   // and for empty ordinary bookcases.
-  let fillColor = '#d9d9d9';
+  let fillColor = '#ffffff';
 
 
   // ---------------------------------------------------------------------------
@@ -373,22 +483,18 @@ function addShelfInteraction(
   const bookcaseLabel =
     getBookcaseLabel(feature);
 
+  const reservedName = String(
+    props.reserved_name || ''
+  ).trim();
 
-  // Permanent exhibition area
+  // Expo areas already have a permanent label.
   if (
     props.reserved &&
-    props.reserved_name
+    /\s+Expo$/i.test(reservedName)
   ) {
-    layer.bindTooltip(
-      `${props.reserved_name}<br>` +
-      `Bookcase ${bookcaseLabel}`
-    );
-
     return;
   }
 
-
-  // Normal bookcase
   layer.bindTooltip(
     `Bookcase ${bookcaseLabel}`
   );
@@ -432,6 +538,10 @@ async function loadFrontShelves() {
 
     shelvesFrontLayer.addTo(
       shelvesFrontGroup
+    );
+
+    addExpoLabels(
+      shelvesFrontLayer
     );
 
     map.fitBounds(
