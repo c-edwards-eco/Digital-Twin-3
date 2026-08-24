@@ -28,8 +28,8 @@ Library staff can additionally reconstruct the current collection using a saved 
 
 1. Open the saved Power BI query **Digital Twin Data**.
 2. Export the results as a CSV file.
-3. Open Digital Twin 3.
-4. Use **Load catalogue data** to select the exported CSV.
+3. Open the Digital Twin 3 in your browser.
+4. Select **Load catalogue data** to upload the exported CSV.
 5. The application processes the file locally in the browser.
 
 Once the catalogue data has been loaded, the map updates to reflect the current bookcase assignments recorded in the library catalogue.
@@ -141,7 +141,7 @@ This information represents permanent or semi-permanent characteristics of the p
 
 ## Technology
 
-Digital Twin 3 is a static, client-side web application built primarily with:
+The Digital Twin 3 is a static, client-side web application built primarily with:
 
 - **Leaflet** — interactive visualization of the Collection Wall.
 - **GeoJSON** — storage of shelf and placeholder-book geometry.
