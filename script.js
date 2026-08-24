@@ -95,6 +95,8 @@ let occupiedBookcases = null;
 
 let bookcaseFacultyMap = new Map();
 
+// bookcase ID -> call number range
+let bookcaseCallNumberRangeMap = new Map();
 
 // =============================================================================
 // GENERAL HELPERS
@@ -152,6 +154,20 @@ function getBookcaseLabel(feature) {
   return `${bookcaseNumber}${isBack ? 'B' : ''}`;
 }
 
+const callNumberCollator = new Intl.Collator(
+  undefined,
+  {
+    numeric: true,
+    sensitivity: 'base'
+  }
+);
+
+function compareCallNumbers(a, b) {
+  return callNumberCollator.compare(
+    String(a || '').trim(),
+    String(b || '').trim()
+  );
+}
 
 // Converts:
 //
@@ -633,12 +649,33 @@ function addPlaceholderBookInteraction(
   feature,
   layer
 ) {
-  const bookcaseLabel =
+  const bookcaseId =
     getBookcaseLabel(feature);
 
-  layer.bindTooltip(
-    `Books on Bookcase ${bookcaseLabel}`
-  );
+  const range =
+    bookcaseCallNumberRangeMap.get(
+      bookcaseId
+    );
+
+  if (range) {
+
+    const rangeText =
+      range.start === range.end
+        ? range.start
+        : `${range.start} – ${range.end}`;
+
+    layer.bindTooltip(
+      `Bookcase ${bookcaseId}<br>` +
+      `Call numbers: ${rangeText}`
+    );
+
+  } else {
+
+    layer.bindTooltip(
+      `Bookcase ${bookcaseId}`
+    );
+
+  }
 }
 
 
@@ -884,6 +921,11 @@ function processCatalogueFile(file) {
       bookcaseFacultyMap =
         new Map();
 
+      bookcaseCallNumberRangeMap =
+        new Map();
+
+      const callNumbersByBookcase =
+        new Map();
 
       let locatedBooks = 0;
       let unlocatedBooks = 0;
@@ -918,6 +960,28 @@ function processCatalogueFile(file) {
           row['suffix 2'] || ''
         ).trim();
 
+        const callNumber = String(
+          row['LHR Item Call Number'] || ''
+        ).trim();
+
+        if (callNumber) {
+
+          if (
+            !callNumbersByBookcase.has(
+              bookcaseId
+            )
+          ) {
+            callNumbersByBookcase.set(
+              bookcaseId,
+              []
+            );
+          }
+
+          callNumbersByBookcase
+            .get(bookcaseId)
+            .push(callNumber);
+        }
+
 
         // For now, first faculty encountered
         // for a bookcase determines its color.
@@ -943,6 +1007,30 @@ function processCatalogueFile(file) {
       // -----------------------------------------------------------------------
       // Apply catalogue to map
       // -----------------------------------------------------------------------
+
+      // Calculate first and last call number
+      // for every occupied bookcase.
+
+      callNumbersByBookcase.forEach(
+        (callNumbers, bookcaseId) => {
+
+          const sorted = [
+            ...new Set(callNumbers)
+          ].sort(compareCallNumbers);
+
+          if (sorted.length === 0) {
+            return;
+          }
+
+          bookcaseCallNumberRangeMap.set(
+            bookcaseId,
+            {
+              start: sorted[0],
+              end: sorted[sorted.length - 1]
+            }
+          );
+        }
+      );
 
       applyCatalogueOccupancy();
 
