@@ -98,6 +98,9 @@ let bookcaseFacultyMap = new Map();
 // bookcase ID -> call number range
 let bookcaseCallNumberRangeMap = new Map();
 
+// build searchable index
+let callNumberIndex = [];
+
 // =============================================================================
 // GENERAL HELPERS
 // =============================================================================
@@ -117,6 +120,110 @@ function reportLoadError(label, error) {
   console.error(`${label} failed to load:`, error);
 }
 
+// =============================================================================
+// CALL NUMBER HELPERS
+// =============================================================================
+
+function normalizeCallNumber(callnum) {
+  return String(callnum || '')
+    .toUpperCase()
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
+const callnumCollator = new Intl.Collator(
+  undefined,
+  {
+    numeric: true,
+    sensitivity: 'base'
+  }
+);
+
+function compareCallNumbers(a, b) {
+  return callnumCollator.compare(
+    normalizeCallNumber(a),
+    normalizeCallNumber(b)
+  );
+}
+
+function findBestCallNumberMatch(query) {
+  const normalizedQuery =
+    normalizeCallNumber(query);
+
+  if (
+    !normalizedQuery ||
+    callNumberIndex.length === 0
+  ) {
+    return null;
+  }
+
+  // Exact match first
+  const exact =
+    callNumberIndex.find(
+      item =>
+        item.normalizedCallnum ===
+        normalizedQuery
+    );
+
+  if (exact) {
+    return exact;
+  }
+
+  // Otherwise find natural-sort insertion point
+  const sorted = [
+    ...callNumberIndex
+  ].sort((a, b) =>
+    compareCallNumbers(
+      a.normalizedCallnum,
+      b.normalizedCallnum
+    )
+  );
+
+  let insertionIndex =
+    sorted.findIndex(
+      item =>
+        compareCallNumbers(
+          item.normalizedCallnum,
+          normalizedQuery
+        ) >= 0
+    );
+
+  if (insertionIndex === -1) {
+    return sorted[sorted.length - 1];
+  }
+
+  if (insertionIndex === 0) {
+    return sorted[0];
+  }
+
+  const prev =
+    sorted[insertionIndex - 1];
+
+  const next =
+    sorted[insertionIndex];
+
+  // Prefer whichever side sorts closest.
+  // If ambiguous, prefer the following item.
+  const prevCompare =
+    Math.abs(
+      compareCallNumbers(
+        prev.normalizedCallnum,
+        normalizedQuery
+      )
+    );
+
+  const nextCompare =
+    Math.abs(
+      compareCallNumbers(
+        next.normalizedCallnum,
+        normalizedQuery
+      )
+    );
+
+  return nextCompare <= prevCompare
+    ? next
+    : prev;
+}
 
 // =============================================================================
 // BOOKCASE HELPERS
@@ -924,6 +1031,8 @@ function processCatalogueFile(file) {
       bookcaseCallNumberRangeMap =
         new Map();
 
+      callNumberIndex = [];
+
       const callNumbersByBookcase =
         new Map();
 
@@ -948,6 +1057,18 @@ function processCatalogueFile(file) {
           return;
         }
 
+        const callnum = String(
+          row['LHR Item Call Number'] || ''
+        ).trim();
+
+        if (callnum) {
+          callNumberIndex.push({
+            callnum,
+            normalizedCallnum:
+              normalizeCallNumber(callnum),
+            bookcaseId
+          });
+        }
 
         occupiedBookcases.add(
           bookcaseId
@@ -1088,6 +1209,148 @@ function processCatalogueFile(file) {
   });
 }
 
+// =============================================================================
+// ZOOMING
+// =============================================================================
+
+function setActiveSideForBookcase(
+  bookcaseId
+) {
+  const isBack =
+    /B$/i.test(
+      String(bookcaseId)
+    );
+
+  map.removeLayer(frontGroup);
+  map.removeLayer(backGroup);
+
+  if (isBack) {
+    backGroup.addTo(map);
+  } else {
+    frontGroup.addTo(map);
+  }
+}
+
+
+function findBookcaseLayers(
+  shelfLayer,
+  bookcaseId
+) {
+  const matches = [];
+
+  shelfLayer.eachLayer(layer => {
+    const feature =
+      layer.feature;
+
+    if (
+      getBookcaseLabel(feature) ===
+      String(bookcaseId)
+    ) {
+      matches.push(layer);
+    }
+  });
+
+  return matches;
+}
+
+
+function zoomToBookcase(
+  bookcaseId
+) {
+  const isBack =
+    /B$/i.test(
+      String(bookcaseId)
+    );
+
+  const shelfLayer =
+    isBack
+      ? shelvesBackLayer
+      : shelvesFrontLayer;
+
+  if (!shelfLayer) {
+    return;
+  }
+
+  const layers =
+    findBookcaseLayers(
+      shelfLayer,
+      bookcaseId
+    );
+
+  if (!layers.length) {
+    return;
+  }
+
+  setActiveSideForBookcase(
+    bookcaseId
+  );
+
+  let bounds = null;
+
+  layers.forEach(layer => {
+    if (!bounds) {
+      bounds =
+        L.latLngBounds(
+          layer.getBounds()
+        );
+    } else {
+      bounds.extend(
+        layer.getBounds()
+      );
+    }
+  });
+
+  map.fitBounds(
+    bounds.pad(0.8)
+  );
+
+  // Open tooltip on the middle shelf
+  const middleLayer =
+    layers[
+    Math.floor(
+      layers.length / 2
+    )
+    ];
+
+  if (middleLayer) {
+    middleLayer.openTooltip();
+  }
+}
+
+
+// =============================================================================
+// SEARCH HANDLER
+// =============================================================================
+
+function searchByCallNumber(
+  query
+) {
+  const match =
+    findBestCallNumberMatch(
+      query
+    );
+
+  if (!match) {
+    updateCallNumberSearchStatus(
+      'No call number found.'
+    );
+    return;
+  }
+
+  zoomToBookcase(
+    match.bookcaseId
+  );
+
+  const exact =
+    normalizeCallNumber(query) ===
+    match.normalizedCallnum;
+
+  updateCallNumberSearchStatus(
+    exact
+      ? `Found ${match.callnum} in Bookcase ${match.bookcaseId}`
+      : `Closest match: ${match.callnum} in Bookcase ${match.bookcaseId}`
+  );
+}
 
 // =============================================================================
 // CATALOGUE UPLOAD UI
@@ -1131,6 +1394,36 @@ const CatalogueUploadControl =
             No catalogue loaded
           </div>
 
+          <div class="callnum-search-section">
+
+  <div class="callnum-search-title">
+    Search by call number
+  </div>
+
+  <input
+    id="callnum-search-input"
+    type="text"
+    placeholder="Enter call number"
+    class="callnum-search-input"
+    disabled
+  >
+
+  <button
+    id="callnum-search-button"
+    type="button"
+    class="callnum-search-button"
+    disabled
+  >
+    Search
+  </button>
+
+  <div
+    id="callnum-search-status"
+    class="callnum-search-status"
+  ></div>
+
+</div>
+
         </div>
       `;
 
@@ -1150,6 +1443,40 @@ const CatalogueUploadControl =
           document.getElementById(
             'catalogue-file-input'
           );
+
+        const searchInput =
+          document.getElementById(
+            'callnum-search-input'
+          );
+
+        const searchButton =
+          document.getElementById(
+            'callnum-search-button'
+          );
+
+        if (searchButton) {
+          searchButton.addEventListener(
+            'click',
+            () => {
+              searchByCallNumber(
+                searchInput.value
+              );
+            }
+          );
+        }
+
+        if (searchInput) {
+          searchInput.addEventListener(
+            'keydown',
+            event => {
+              if (event.key === 'Enter') {
+                searchByCallNumber(
+                  searchInput.value
+                );
+              }
+            }
+          );
+        }
 
 
         if (!input) {
@@ -1178,6 +1505,24 @@ const CatalogueUploadControl =
             processCatalogueFile(
               file
             );
+
+            const searchInput =
+              document.getElementById(
+                'callnum-search-input'
+              );
+
+            const searchButton =
+              document.getElementById(
+                'callnum-search-button'
+              );
+
+            if (searchInput) {
+              searchInput.disabled = false;
+            }
+
+            if (searchButton) {
+              searchButton.disabled = false;
+            }
           }
         );
 
@@ -1188,6 +1533,22 @@ const CatalogueUploadControl =
     }
 
   });
+
+  function updateCallNumberSearchStatus(
+  message
+) {
+  const status =
+    document.getElementById(
+      'callnum-search-status'
+    );
+
+  if (!status) {
+    return;
+  }
+
+  status.textContent =
+    message;
+}
 
 
 map.addControl(

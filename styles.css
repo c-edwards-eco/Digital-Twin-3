@@ -181,3 +181,31 @@ a:hover {
 
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
 }
+
+/* call num search */
+.callnum-search-section {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #ddd;
+}
+
+.callnum-search-title {
+  font-weight: bold;
+  margin-bottom: 6px;
+}
+
+.callnum-search-input {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 6px;
+}
+
+.callnum-search-button {
+  width: 100%;
+}
+
+.callnum-search-status {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.3;
+}
