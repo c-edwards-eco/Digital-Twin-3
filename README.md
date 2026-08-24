@@ -2,9 +2,11 @@
 
 An interactive digital representation of the TU Delft Library Collection Wall.
 
-Digital Twin 3 is designed around a simple principle: **the library catalogue is the source of truth for the collection**. The application contains the information required to represent the physical structure of the Collection Wall, while current information about the books themselves is loaded from library catalogue data when needed.
+The Digital Twin 3 is designed around a simple principle: **the library catalogue is the source of truth for the collection**. The application contains the information required to represent the physical structure of the Collection Wall, while current information about the books themselves is loaded from library catalogue data when needed.
 
 This avoids maintaining the same collection information separately in both the catalogue and the Digital Twin.
+
+The Digital Twin 3 is a refactored version of the Digital Twin 2, which was originally used as a companion application for the rearrangement of the Collection Wall. Instead of being run locally, this version is intended to be used and shared more widely, while being smoothly integrated with the newly enhanced library metadata.
 
 ## What the application shows
 
