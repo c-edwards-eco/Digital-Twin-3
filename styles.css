@@ -115,6 +115,12 @@ a:hover {
   font-size: 12px;
 }
 
+.leaflet-interactive.bookcase-hover {
+  filter:
+    drop-shadow(0 0 3px rgba(255, 255, 255, 0.95))
+    drop-shadow(0 0 6px rgba(0, 0, 0, 0.35));
+}
+
 /* footer */
 #footer {
   bottom: 0;

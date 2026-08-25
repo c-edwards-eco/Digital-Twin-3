@@ -297,6 +297,91 @@ function parseBookcaseFromSuffix(value) {
   return `${match[1]}${match[2].toUpperCase()}`;
 }
 
+function getShelfGroupForBookcase(bookcaseId, side) {
+  const shelfLayer =
+    side === 'back'
+      ? shelvesBackLayer
+      : shelvesFrontLayer;
+
+  if (!shelfLayer) {
+    return [];
+  }
+
+  const matches = [];
+
+  shelfLayer.eachLayer(layer => {
+    const feature = layer.feature;
+
+    if (
+      feature &&
+      getBookcaseLabel(feature) === String(bookcaseId)
+    ) {
+      matches.push(layer);
+    }
+  });
+
+  return matches;
+}
+
+
+function setBookcaseHoverStyle(
+  bookcaseId,
+  side,
+  isHovered
+) {
+  const layers =
+    getShelfGroupForBookcase(
+      bookcaseId,
+      side
+    );
+
+  layers.forEach(layer => {
+    if (isHovered) {
+      layer.setStyle({
+        weight: 3,
+        color: '#ffffff'
+      });
+
+      if (layer._path) {
+        layer._path.classList.add(
+          'bookcase-hover'
+        );
+      }
+
+    } else {
+      layer.setStyle(
+        shelfStyle(layer.feature)
+      );
+
+      if (layer._path) {
+        layer._path.classList.remove(
+          'bookcase-hover'
+        );
+      }
+    }
+  });
+}
+
+function getBookcaseTooltipText(bookcaseId) {
+  const range =
+    bookcaseCallNumberRangeMap.get(
+      String(bookcaseId)
+    );
+
+  if (!range) {
+    return `Bookcase ${bookcaseId}`;
+  }
+
+  const rangeText =
+    range.start === range.end
+      ? range.start
+      : `${range.start} – ${range.end}`;
+
+  return (
+    `Bookcase ${bookcaseId}<br>` +
+    `Call numbers: ${rangeText}`
+  );
+}
 
 // =============================================================================
 // FACULTY COLORS
@@ -603,14 +688,14 @@ function addShelfInteraction(
   const props =
     feature.properties || {};
 
-  const bookcaseLabel =
+  const bookcaseId =
     getBookcaseLabel(feature);
 
   const reservedName = String(
     props.reserved_name || ''
   ).trim();
 
-  // Expo areas already have a permanent label.
+  // Expo areas already have permanent labels.
   if (
     props.reserved &&
     /\s+Expo$/i.test(reservedName)
@@ -619,10 +704,32 @@ function addShelfInteraction(
   }
 
   layer.bindTooltip(
-    `Bookcase ${bookcaseLabel}`
+    getBookcaseTooltipText(bookcaseId)
   );
-}
 
+  const side =
+    String(props.side || 'front')
+      .trim()
+      .toLowerCase();
+
+  layer.on({
+    mouseover: () => {
+      setBookcaseHoverStyle(
+        bookcaseId,
+        side,
+        true
+      );
+    },
+
+    mouseout: () => {
+      setBookcaseHoverStyle(
+        bookcaseId,
+        side,
+        false
+      );
+    }
+  });
+}
 
 // =============================================================================
 // LOAD SHELVES
@@ -751,40 +858,59 @@ function placeholderBookStyle(feature) {
   };
 }
 
-
 function addPlaceholderBookInteraction(
   feature,
   layer
 ) {
+  const props =
+    feature.properties || {};
+
   const bookcaseId =
     getBookcaseLabel(feature);
 
+  const side =
+    String(props.side || 'front')
+      .trim()
+      .toLowerCase();
+
   const range =
     bookcaseCallNumberRangeMap.get(
-      bookcaseId
+      String(bookcaseId)
     );
 
   if (range) {
-
     const rangeText =
       range.start === range.end
         ? range.start
         : `${range.start} – ${range.end}`;
 
     layer.bindTooltip(
-      `Bookcase ${bookcaseId}<br>` +
       `Call numbers: ${rangeText}`
     );
-
   } else {
-
     layer.bindTooltip(
       `Bookcase ${bookcaseId}`
     );
-
   }
-}
 
+  layer.on({
+    mouseover: () => {
+      setBookcaseHoverStyle(
+        bookcaseId,
+        side,
+        true
+      );
+    },
+
+    mouseout: () => {
+      setBookcaseHoverStyle(
+        bookcaseId,
+        side,
+        false
+      );
+    }
+  });
+}
 
 // =============================================================================
 // PLACEHOLDER BOOK RENDERING
@@ -1373,7 +1499,7 @@ const CatalogueUploadControl =
         );
 
 
-div.innerHTML = `
+      div.innerHTML = `
   <div class="catalogue-upload-box">
 
     <div class="catalogue-tools-row">
