@@ -53,6 +53,7 @@ a:hover {
 /* map container */
 #map-container {
   flex: 1;
+  position: relative;
 }
 
 /* map styling */
@@ -83,6 +84,123 @@ a:hover {
   box-shadow: 0 0 2px #000;      
   text-align: center;             
 }
+
+/* ===== Bookcase Explorer ===== */
+
+.bookcase-modal-overlay {
+  position: absolute;
+  inset: 0;
+
+  z-index: 2000;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: rgba(40, 40, 40, 0.65);
+
+  pointer-events: auto;
+}
+
+.bookcase-modal-overlay[hidden] {
+  display: none;
+}
+
+
+.bookcase-modal {
+  width: 90%;
+  height: 90%;
+
+  background: white;
+
+  border-radius: 10px;
+
+  overflow: hidden;
+
+  box-shadow:
+    0 8px 30px rgba(0, 0, 0, 0.35);
+
+  display: flex;
+  flex-direction: column;
+}
+
+
+/* Header color is supplied dynamically from JS */
+
+.bookcase-modal-header {
+  min-height: 90px;
+
+  padding: 18px 22px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  box-sizing: border-box;
+
+  color: white;
+}
+
+
+.bookcase-modal-heading {
+  min-width: 0;
+}
+
+
+.bookcase-modal-title {
+  font-size: 25px;
+  font-weight: bold;
+  line-height: 1.2;
+}
+
+
+.bookcase-modal-meta {
+  margin-top: 6px;
+
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+
+/* Big, obvious close button */
+
+.bookcase-modal-close {
+  flex: 0 0 auto;
+
+  margin-left: 20px;
+
+  width: 44px;
+  height: 44px;
+
+  border: none;
+  border-radius: 50%;
+
+  background: rgba(255, 255, 255, 0.18);
+
+  color: white;
+
+  font-size: 34px;
+  line-height: 36px;
+
+  cursor: pointer;
+}
+
+.bookcase-modal-close:hover {
+  background: rgba(255, 255, 255, 0.30);
+}
+
+
+.bookcase-modal-content {
+  flex: 1;
+
+  padding: 22px;
+
+  overflow-y: auto;
+
+  color: #222;
+}
+
+/* extras */
 
 .callnum-box {
   background: white;

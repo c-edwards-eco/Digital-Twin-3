@@ -727,6 +727,12 @@ function addShelfInteraction(
         side,
         false
       );
+    },
+
+    click: () => {
+      openBookcaseExplorer(
+        bookcaseId
+      );
     }
   });
 }
@@ -894,6 +900,7 @@ function addPlaceholderBookInteraction(
   }
 
   layer.on({
+
     mouseover: () => {
       setBookcaseHoverStyle(
         bookcaseId,
@@ -908,7 +915,14 @@ function addPlaceholderBookInteraction(
         side,
         false
       );
+    },
+
+    click: () => {
+      openBookcaseExplorer(
+        bookcaseId
+      );
     }
+
   });
 }
 
@@ -1071,6 +1085,140 @@ function applyCatalogueColors() {
   }
 }
 
+function getBookcaseFaculty(bookcaseId) {
+  return (
+    bookcaseFacultyMap.get(
+      String(bookcaseId)
+    ) || 'Other'
+  );
+}
+
+function getBookcaseRangeText(bookcaseId) {
+  const range =
+    bookcaseCallNumberRangeMap.get(
+      String(bookcaseId)
+    );
+
+  if (!range) {
+    return 'No call number range available';
+  }
+
+  if (range.start === range.end) {
+    return range.start;
+  }
+
+  return `${range.start} – ${range.end}`;
+}
+
+function openBookcaseExplorer(bookcaseId) {
+  const id =
+    String(bookcaseId);
+
+  if (
+    occupiedBookcases === null ||
+    !occupiedBookcases.has(id)
+  ) {
+    return;
+  }
+
+  const overlay =
+    document.getElementById(
+      'bookcase-modal-overlay'
+    );
+
+  const header =
+    document.getElementById(
+      'bookcase-modal-header'
+    );
+
+  const title =
+    document.getElementById(
+      'bookcase-modal-title'
+    );
+
+  const meta =
+    document.getElementById(
+      'bookcase-modal-meta'
+    );
+
+  const content =
+    document.getElementById(
+      'bookcase-modal-content'
+    );
+
+  if (
+    !overlay ||
+    !header ||
+    !title ||
+    !meta ||
+    !content
+  ) {
+    return;
+  }
+
+
+  // ---------------------------------------------------------------------------
+  // Faculty
+  // ---------------------------------------------------------------------------
+
+  const faculty =
+    getBookcaseFaculty(id);
+
+
+  // Uses your existing logic, including:
+  // - exact faculty colors
+  // - Faculty Recommendation lighter variants
+  // - Other fallback
+
+  const color =
+    getFacultyColor(faculty);
+
+
+  // ---------------------------------------------------------------------------
+  // Header
+  // ---------------------------------------------------------------------------
+
+  header.style.backgroundColor =
+    color;
+
+  title.textContent =
+    `Bookcase ${id}`;
+
+  meta.innerHTML =
+    `${faculty}<br>` +
+    `Call numbers: ${getBookcaseRangeText(id)}`;
+
+
+  // ---------------------------------------------------------------------------
+  // Placeholder content
+  // ---------------------------------------------------------------------------
+
+  content.innerHTML = `
+    <p>
+      Book exploration for
+      <strong>Bookcase ${id}</strong>
+      will appear here.
+    </p>
+  `;
+
+
+  // ---------------------------------------------------------------------------
+  // Show modal
+  // ---------------------------------------------------------------------------
+
+  overlay.hidden = false;
+}
+
+function closeBookcaseExplorer() {
+  const overlay =
+    document.getElementById(
+      'bookcase-modal-overlay'
+    );
+
+  if (overlay) {
+    overlay.hidden = true;
+  }
+}
 
 // =============================================================================
 // CATALOGUE CSV PROCESSING
@@ -1732,6 +1880,57 @@ function updateCatalogueStatus(
 // INITIAL LOAD
 // =============================================================================
 
+function initializeBookcaseExplorer() {
+  const overlay =
+    document.getElementById(
+      'bookcase-modal-overlay'
+    );
+
+  const closeButton =
+    document.getElementById(
+      'bookcase-modal-close'
+    );
+
+  if (closeButton) {
+    closeButton.addEventListener(
+      'click',
+      closeBookcaseExplorer
+    );
+  }
+
+
+  // Clicking the grey backdrop also closes it.
+  if (overlay) {
+    overlay.addEventListener(
+      'click',
+      event => {
+
+        if (event.target === overlay) {
+          closeBookcaseExplorer();
+        }
+
+      }
+    );
+  }
+
+
+  // Escape key closes it too.
+  document.addEventListener(
+    'keydown',
+    event => {
+
+      if (
+        event.key === 'Escape' &&
+        overlay &&
+        !overlay.hidden
+      ) {
+        closeBookcaseExplorer();
+      }
+
+    }
+  );
+}
+
 async function initializeMapData() {
   try {
 
@@ -1800,4 +1999,5 @@ L.control.layers(
 
 // Start application.
 
+initializeBookcaseExplorer();
 initializeMapData();

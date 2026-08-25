@@ -27,9 +27,11 @@
       </p>
       <p>The shelves were created with a matrix in Excel, and then transformed to a GeoJSON using R.
       </p>
-      <p> Faculty Expo areas are shaded by default, but <b>catalogue data must be manually uploaded to visualize book placement.</b> Catalogue data is stored temporarily in the browser.
+      <p> Faculty Expo areas are shaded by default, but <b>catalogue data must be manually uploaded to visualize book
+          placement.</b> Catalogue data is stored temporarily in the browser.
       </p>
-      <p>Once catalogue data has been uploaded, you can explore the call number range for each bookcase, or search for a specific call number to find it or its closest match.
+      <p>Once catalogue data has been uploaded, you can explore the call number range for each bookcase, or search for a
+        specific call number to find it or its closest match.
       </p>
       <p>The purpose of this map is to visualize the future (re)arrangements of the iconic collection wall.
       </p>
@@ -38,6 +40,39 @@
     <section id="map-container">
       <div id="map"></div>
     </section>
+
+    <div id="bookcase-modal-overlay" class="bookcase-modal-overlay" hidden>
+
+      <div id="bookcase-modal" class="bookcase-modal" role="dialog" aria-modal="true"
+        aria-labelledby="bookcase-modal-title">
+
+        <div id="bookcase-modal-header" class="bookcase-modal-header">
+
+          <div class="bookcase-modal-heading">
+
+            <div id="bookcase-modal-title" class="bookcase-modal-title">
+              Bookcase
+            </div>
+
+            <div id="bookcase-modal-meta" class="bookcase-modal-meta"></div>
+
+          </div>
+
+          <button id="bookcase-modal-close" class="bookcase-modal-close" type="button"
+            aria-label="Close bookcase explorer">
+            ×
+          </button>
+
+        </div>
+
+
+        <div id="bookcase-modal-content" class="bookcase-modal-content">
+          <!-- Book exploration UI will go here next -->
+        </div>
+
+      </div>
+
+    </div>
   </main>
 
   <footer id="footer">
