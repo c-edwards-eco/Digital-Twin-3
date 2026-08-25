@@ -108,13 +108,12 @@ a:hover {
 
 
 .bookcase-modal {
-  width: 90%;
+  width: min(40%, 1100px);
   height: 90%;
 
   background: white;
 
   border-radius: 10px;
-
   overflow: hidden;
 
   box-shadow:
@@ -159,6 +158,73 @@ a:hover {
 
   font-size: 15px;
   line-height: 1.4;
+}
+
+/* ===== Bookcase visual browser ===== */
+
+.bookcase-browser {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+
+/* One visual shelf */
+.browser-shelf {
+  flex: 1;
+  min-height: 0;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+
+/* Books sit along the shelf */
+.browser-books {
+  flex: 1;
+
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+
+  gap: 3px;
+
+  padding: 0 10px;
+}
+
+
+/* Individual placeholder book spine */
+.browser-book {
+  width: 14px;
+  height: 72%;
+
+  background: #777;
+  border: 1px solid #333;
+  border-bottom: none;
+
+  border-radius: 2px 2px 0 0;
+
+  cursor: pointer;
+}
+
+
+/* Small hover response */
+.browser-book:hover {
+  background: #555;
+  transform: translateY(-4px);
+}
+
+
+/* Physical shelf board */
+.browser-shelf-board {
+  height: 7px;
+
+  background: #333;
+
+  border-radius: 2px;
 }
 
 

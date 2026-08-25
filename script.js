@@ -1194,12 +1194,27 @@ function openBookcaseExplorer(bookcaseId) {
   // ---------------------------------------------------------------------------
 
   content.innerHTML = `
-    <p>
-      Book exploration for
-      <strong>Bookcase ${id}</strong>
-      will appear here.
-    </p>
-  `;
+  <div class="bookcase-browser">
+    ${Array.from({ length: 6 }, (_, shelfIndex) => `
+      <div class="browser-shelf">
+
+        <div class="browser-books">
+          ${Array.from({ length: 25 }, (_, bookIndex) => `
+            <div
+              class="browser-book"
+              title="Placeholder book"
+              data-shelf="${shelfIndex + 1}"
+              data-book="${bookIndex + 1}"
+            ></div>
+          `).join('')}
+        </div>
+
+        <div class="browser-shelf-board"></div>
+
+      </div>
+    `).join('')}
+  </div>
+`;
 
 
   // ---------------------------------------------------------------------------
