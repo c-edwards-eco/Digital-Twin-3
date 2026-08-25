@@ -128,38 +128,6 @@ a:hover {
   line-height: 60px;
 }
 
-/* catalogue stuff */
-.catalogue-upload {
-  background: white;
-  padding: 10px;
-  border-radius: 4px;
-  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.35);
-}
-
-.catalogue-upload-box {
-  min-width: 220px;
-}
-
-.catalogue-upload-title {
-  font-weight: bold;
-  margin-bottom: 8px;
-}
-
-.catalogue-file-input {
-  display: block;
-  max-width: 220px;
-}
-
-.catalogue-upload-status {
-  margin-top: 8px;
-  font-size: 12px;
-  line-height: 1.3;
-}
-
-.catalogue-upload-error {
-  font-weight: bold;
-}
-
 /* labels */
 .expo-label {
   background: transparent;
@@ -182,30 +150,69 @@ a:hover {
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
 }
 
-/* call num search */
-.callnum-search-section {
-  margin-top: 12px;
-  padding-top: 10px;
-  border-top: 1px solid #ddd;
+/* upload and search tools */
+
+.catalogue-upload {
+  background: white;
+  padding: 12px;
+  border-radius: 6px;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.35);
 }
 
+.catalogue-upload-box {
+  min-width: 480px;
+}
+
+.catalogue-tools-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.catalogue-tool {
+  flex: 1;
+  min-width: 0;
+}
+
+.catalogue-load-tool {
+  padding-right: 16px;
+  border-right: 1px solid #ddd;
+}
+
+.catalogue-upload-title,
 .callnum-search-title {
   font-weight: bold;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
+}
+
+.catalogue-file-input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.callnum-search-controls {
+  display: flex;
+  gap: 6px;
 }
 
 .callnum-search-input {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   box-sizing: border-box;
-  margin-bottom: 6px;
 }
 
 .callnum-search-button {
-  width: 100%;
+  flex: 0 0 auto;
 }
 
+.catalogue-upload-status,
 .callnum-search-status {
-  margin-top: 6px;
+  margin-top: 8px;
   font-size: 12px;
   line-height: 1.3;
+}
+
+.catalogue-upload-error {
+  font-weight: bold;
 }

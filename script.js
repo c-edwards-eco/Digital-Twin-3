@@ -1373,59 +1373,74 @@ const CatalogueUploadControl =
         );
 
 
-      div.innerHTML = `
-        <div class="catalogue-upload-box">
+div.innerHTML = `
+  <div class="catalogue-upload-box">
 
-          <div class="catalogue-upload-title">
-            Load catalogue data
-          </div>
+    <div class="catalogue-tools-row">
+
+      <!-- Catalogue upload -->
+      <div class="catalogue-tool catalogue-load-tool">
+
+        <div class="catalogue-upload-title">
+          Load catalogue data
+        </div>
+
+        <input
+          id="catalogue-file-input"
+          type="file"
+          accept=".csv,text/csv"
+          class="catalogue-file-input"
+        >
+
+        <div
+          id="catalogue-upload-status"
+          class="catalogue-upload-status"
+        >
+          No catalogue loaded
+        </div>
+
+      </div>
+
+
+      <!-- Call number search -->
+      <div class="catalogue-tool callnum-search-section">
+
+        <div class="callnum-search-title">
+          Search by call number
+        </div>
+
+        <div class="callnum-search-controls">
 
           <input
-            id="catalogue-file-input"
-            type="file"
-            accept=".csv,text/csv"
-            class="catalogue-file-input"
+            id="callnum-search-input"
+            type="text"
+            placeholder="Enter call number"
+            class="callnum-search-input"
+            disabled
           >
 
-          <div
-            id="catalogue-upload-status"
-            class="catalogue-upload-status"
+          <button
+            id="callnum-search-button"
+            type="button"
+            class="callnum-search-button"
+            disabled
           >
-            No catalogue loaded
-          </div>
-
-          <div class="callnum-search-section">
-
-  <div class="callnum-search-title">
-    Search by call number
-  </div>
-
-  <input
-    id="callnum-search-input"
-    type="text"
-    placeholder="Enter call number"
-    class="callnum-search-input"
-    disabled
-  >
-
-  <button
-    id="callnum-search-button"
-    type="button"
-    class="callnum-search-button"
-    disabled
-  >
-    Search
-  </button>
-
-  <div
-    id="callnum-search-status"
-    class="callnum-search-status"
-  ></div>
-
-</div>
+            Search
+          </button>
 
         </div>
-      `;
+
+        <div
+          id="callnum-search-status"
+          class="callnum-search-status"
+        ></div>
+
+      </div>
+
+    </div>
+
+  </div>
+`;
 
 
       L.DomEvent.disableClickPropagation(
@@ -1534,7 +1549,7 @@ const CatalogueUploadControl =
 
   });
 
-  function updateCallNumberSearchStatus(
+function updateCallNumberSearchStatus(
   message
 ) {
   const status =
