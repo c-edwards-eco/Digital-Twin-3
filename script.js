@@ -1994,7 +1994,6 @@ async function initializeMapData() {
 
 frontGroup.addTo(map);
 
-
 L.control.layers(
   {
     'Front': frontGroup,
@@ -2007,38 +2006,7 @@ L.control.layers(
   }
 ).addTo(map);
 
-
 // Start application.
 
 initializeBookcaseExplorer();
 initializeMapData();
-
-// ===== Disable browser/page zoom =====
-
-/*
-// Ctrl/Cmd + mouse wheel
-window.addEventListener(
-  'wheel',
-  event => {
-    if (event.ctrlKey || event.metaKey) {
-      event.preventDefault();
-    }
-  },
-  {
-    passive: false
-  }
-);
-
-
-// Ctrl/Cmd + plus, minus, or zero
-window.addEventListener(
-  'keydown',
-  event => {
-    if (
-      (event.ctrlKey || event.metaKey) &&
-      ['+', '-', '=', '0'].includes(event.key)
-    ) {
-      event.preventDefault();
-    }
-  }
-); */
