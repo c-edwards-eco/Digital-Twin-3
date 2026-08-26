@@ -20,7 +20,15 @@
 
 const map = L.map('map', {
   crs: L.CRS.Simple,
-  minZoom: 3
+
+  // No manual map navigation
+  dragging: false,
+  scrollWheelZoom: false,
+  doubleClickZoom: false,
+  boxZoom: false,
+  keyboard: false,
+  touchZoom: false,
+  zoomControl: false
 });
 
 
@@ -762,7 +770,18 @@ async function loadFrontShelves() {
     );
 
     map.fitBounds(
-      shelvesFrontLayer.getBounds()
+      shelvesFrontLayer.getBounds(),
+      {
+        animate: false
+      }
+    );
+
+    // Shift the wall slightly to the left
+    map.panBy(
+      [50, 0],
+      {
+        animate: false
+      }
     );
 
   } catch (error) {
@@ -1168,7 +1187,7 @@ function openBookcaseExplorer(bookcaseId) {
   // Placeholder content
   // ---------------------------------------------------------------------------
 
-content.innerHTML = `
+  content.innerHTML = `
   <div
     class="bookcase-browser"
     style="--book-color: ${color};"
@@ -1993,3 +2012,32 @@ L.control.layers(
 
 initializeBookcaseExplorer();
 initializeMapData();
+
+// ===== Disable browser/page zoom =====
+
+// Ctrl/Cmd + mouse wheel
+window.addEventListener(
+  'wheel',
+  event => {
+    if (event.ctrlKey || event.metaKey) {
+      event.preventDefault();
+    }
+  },
+  {
+    passive: false
+  }
+);
+
+
+// Ctrl/Cmd + plus, minus, or zero
+window.addEventListener(
+  'keydown',
+  event => {
+    if (
+      (event.ctrlKey || event.metaKey) &&
+      ['+', '-', '=', '0'].includes(event.key)
+    ) {
+      event.preventDefault();
+    }
+  }
+);
