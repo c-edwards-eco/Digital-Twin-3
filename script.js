@@ -1311,7 +1311,33 @@ function findBookcaseLayers(
   return matches;
 }
 
-function zoomToBookcase(bookcaseId) {
+function temporarilyHighlightBookcase(
+  bookcaseId,
+  duration = 1800
+) {
+  const side =
+    /B$/i.test(String(bookcaseId))
+      ? 'back'
+      : 'front';
+
+  setBookcaseHoverStyle(
+    bookcaseId,
+    side,
+    true
+  );
+
+  setTimeout(() => {
+    setBookcaseHoverStyle(
+      bookcaseId,
+      side,
+      false
+    );
+  }, duration);
+}
+
+function focusBookcase(
+  bookcaseId
+) {
   const isBack = /B$/i.test(
     String(bookcaseId)
   );
@@ -1325,41 +1351,33 @@ function zoomToBookcase(bookcaseId) {
     return;
   }
 
-  const layers = findBookcaseLayers(
-    shelfLayer,
-    bookcaseId
-  );
+  const layers =
+    findBookcaseLayers(
+      shelfLayer,
+      bookcaseId
+    );
 
   if (!layers.length) {
     return;
   }
 
+  // Switch to the correct side.
   setActiveSideForBookcase(
     bookcaseId
   );
 
-  let bounds = null;
-
-  layers.forEach(layer => {
-    if (!bounds) {
-      bounds = L.latLngBounds(
-        layer.getBounds()
-      );
-    } else {
-      bounds.extend(
-        layer.getBounds()
-      );
-    }
-  });
-
-  map.fitBounds(
-    bounds.pad(0.8)
+  // Temporarily glow the whole bookcase.
+  temporarilyHighlightBookcase(
+    bookcaseId
   );
 
   // Open tooltip on the middle shelf.
-  const middleLayer = layers[
-    Math.floor(layers.length / 2)
-  ];
+  const middleLayer =
+    layers[
+      Math.floor(
+        layers.length / 2
+      )
+    ];
 
   if (middleLayer) {
     middleLayer.openTooltip();
@@ -1379,7 +1397,7 @@ function searchByCallNumber(query) {
     return;
   }
 
-  zoomToBookcase(
+  focusBookcase(
     match.bookcaseId
   );
 
