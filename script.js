@@ -778,7 +778,7 @@ async function loadFrontShelves() {
 
     // Shift the wall slightly to the left
     map.panBy(
-      [50, 0],
+      [50, 30],
       {
         animate: false
       }
