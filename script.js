@@ -10,7 +10,7 @@
 // - CSV remains client-side only
 // - occupied bookcases retain placeholder books
 // - empty bookcases have placeholder books removed
-// - occupied bookcases are shaded by suffix 2 faculty
+// - placeholder books are colored by suffix 2 faculty
 // - unknown faculties use the "Other" color
 
 
@@ -21,7 +21,7 @@
 const map = L.map('map', {
   crs: L.CRS.Simple,
 
-  // No manual map navigation
+  // No manual map navigation.
   dragging: false,
   scrollWheelZoom: false,
   doubleClickZoom: false,
@@ -44,11 +44,7 @@ const placeholderBooksBackGroup = L.layerGroup();
 
 const expoLabelsFrontGroup = L.layerGroup();
 
-
 // Each side is treated as one complete base layer.
-// This ensures front books only appear with front shelves,
-// and back books only appear with back shelves.
-
 const frontGroup = L.layerGroup([
   shelvesFrontGroup,
   placeholderBooksFrontGroup,
@@ -65,49 +61,34 @@ const backGroup = L.layerGroup([
 // APPLICATION STATE
 // =============================================================================
 
-// Shelf layers
+// Shelf layers.
 let shelvesFrontLayer;
 let shelvesBackLayer;
 
-
-// Placeholder book layers
+// Placeholder book layers.
 let placeholderBooksFrontLayer;
 let placeholderBooksBackLayer;
 
-
-// Original placeholder GeoJSON.
-// Kept unchanged in memory so we can re-filter it after catalogue upload.
-
+// Original placeholder GeoJSON, kept unchanged in memory so it can be
+// re-filtered after catalogue upload.
 let placeholderBooksFrontData = null;
 let placeholderBooksBackData = null;
 
-
-// Faculty configuration
+// Faculty configuration.
 let facultyColors = [];
 let facultyColorMap = new Map();
 
-
 // Catalogue data exists only for the lifetime of this page.
-// Refreshing the browser clears all of this.
-
 let catalogueRows = [];
 
-
 // null means no catalogue has been loaded yet.
-// Once loaded, this becomes a Set of bookcase IDs.
-
 let occupiedBookcases = null;
 
-
-// bookcase ID -> faculty from suffix 2
-
+// Catalogue-derived lookups.
 let bookcaseFacultyMap = new Map();
-
-// bookcase ID -> call number range
 let bookcaseCallNumberRangeMap = new Map();
-
-// build searchable index
 let callNumberIndex = [];
+
 
 // =============================================================================
 // GENERAL HELPERS
@@ -123,10 +104,10 @@ function checkResponse(response, url) {
   return response;
 }
 
-
 function reportLoadError(label, error) {
   console.error(`${label} failed to load:`, error);
 }
+
 
 // =============================================================================
 // CALL NUMBER HELPERS
@@ -139,7 +120,7 @@ function normalizeCallNumber(callnum) {
     .replace(/\s+/g, ' ');
 }
 
-const callnumCollator = new Intl.Collator(
+const callNumberCollator = new Intl.Collator(
   undefined,
   {
     numeric: true,
@@ -148,15 +129,14 @@ const callnumCollator = new Intl.Collator(
 );
 
 function compareCallNumbers(a, b) {
-  return callnumCollator.compare(
+  return callNumberCollator.compare(
     normalizeCallNumber(a),
     normalizeCallNumber(b)
   );
 }
 
 function findBestCallNumberMatch(query) {
-  const normalizedQuery =
-    normalizeCallNumber(query);
+  const normalizedQuery = normalizeCallNumber(query);
 
   if (
     !normalizedQuery ||
@@ -165,36 +145,30 @@ function findBestCallNumberMatch(query) {
     return null;
   }
 
-  // Exact match first
-  const exact =
-    callNumberIndex.find(
-      item =>
-        item.normalizedCallnum ===
-        normalizedQuery
-    );
+  // Exact match first.
+  const exact = callNumberIndex.find(
+    item => item.normalizedCallnum === normalizedQuery
+  );
 
   if (exact) {
     return exact;
   }
 
-  // Otherwise find natural-sort insertion point
-  const sorted = [
-    ...callNumberIndex
-  ].sort((a, b) =>
+  // Otherwise find the natural-sort insertion point.
+  const sorted = [...callNumberIndex].sort((a, b) =>
     compareCallNumbers(
       a.normalizedCallnum,
       b.normalizedCallnum
     )
   );
 
-  let insertionIndex =
-    sorted.findIndex(
-      item =>
-        compareCallNumbers(
-          item.normalizedCallnum,
-          normalizedQuery
-        ) >= 0
-    );
+  const insertionIndex = sorted.findIndex(
+    item =>
+      compareCallNumbers(
+        item.normalizedCallnum,
+        normalizedQuery
+      ) >= 0
+  );
 
   if (insertionIndex === -1) {
     return sorted[sorted.length - 1];
@@ -204,34 +178,30 @@ function findBestCallNumberMatch(query) {
     return sorted[0];
   }
 
-  const prev =
-    sorted[insertionIndex - 1];
-
-  const next =
-    sorted[insertionIndex];
+  const prev = sorted[insertionIndex - 1];
+  const next = sorted[insertionIndex];
 
   // Prefer whichever side sorts closest.
   // If ambiguous, prefer the following item.
-  const prevCompare =
-    Math.abs(
-      compareCallNumbers(
-        prev.normalizedCallnum,
-        normalizedQuery
-      )
-    );
+  const prevCompare = Math.abs(
+    compareCallNumbers(
+      prev.normalizedCallnum,
+      normalizedQuery
+    )
+  );
 
-  const nextCompare =
-    Math.abs(
-      compareCallNumbers(
-        next.normalizedCallnum,
-        normalizedQuery
-      )
-    );
+  const nextCompare = Math.abs(
+    compareCallNumbers(
+      next.normalizedCallnum,
+      normalizedQuery
+    )
+  );
 
   return nextCompare <= prevCompare
     ? next
     : prev;
 }
+
 
 // =============================================================================
 // BOOKCASE HELPERS
@@ -263,32 +233,16 @@ function getBookcaseLabel(feature) {
     return 'Unknown';
   }
 
-  const bookcaseNumber =
-    Math.ceil(shelfNumber / 6);
+  const bookcaseNumber = Math.ceil(
+    shelfNumber / 6
+  );
 
   return `${bookcaseNumber}${isBack ? 'B' : ''}`;
 }
 
-const callNumberCollator = new Intl.Collator(
-  undefined,
-  {
-    numeric: true,
-    sensitivity: 'base'
-  }
-);
-
-function compareCallNumbers(a, b) {
-  return callNumberCollator.compare(
-    String(a || '').trim(),
-    String(b || '').trim()
-  );
-}
-
 // Converts:
-//
-// Bookcase 147  -> 147
-// Bookcase 99B  -> 99B
-
+// Bookcase 147 -> 147
+// Bookcase 99B -> 99B
 function parseBookcaseFromSuffix(value) {
   const text = String(
     value || ''
@@ -305,7 +259,10 @@ function parseBookcaseFromSuffix(value) {
   return `${match[1]}${match[2].toUpperCase()}`;
 }
 
-function getShelfGroupForBookcase(bookcaseId, side) {
+function getShelfGroupForBookcase(
+  bookcaseId,
+  side
+) {
   const shelfLayer =
     side === 'back'
       ? shelvesBackLayer
@@ -331,17 +288,15 @@ function getShelfGroupForBookcase(bookcaseId, side) {
   return matches;
 }
 
-
 function setBookcaseHoverStyle(
   bookcaseId,
   side,
   isHovered
 ) {
-  const layers =
-    getShelfGroupForBookcase(
-      bookcaseId,
-      side
-    );
+  const layers = getShelfGroupForBookcase(
+    bookcaseId,
+    side
+  );
 
   layers.forEach(layer => {
     if (isHovered) {
@@ -355,7 +310,6 @@ function setBookcaseHoverStyle(
           'bookcase-hover'
         );
       }
-
     } else {
       layer.setStyle(
         shelfStyle(layer.feature)
@@ -371,10 +325,9 @@ function setBookcaseHoverStyle(
 }
 
 function getBookcaseTooltipText(bookcaseId) {
-  const range =
-    bookcaseCallNumberRangeMap.get(
-      String(bookcaseId)
-    );
+  const range = bookcaseCallNumberRangeMap.get(
+    String(bookcaseId)
+  );
 
   if (!range) {
     return `Bookcase ${bookcaseId}`;
@@ -391,6 +344,31 @@ function getBookcaseTooltipText(bookcaseId) {
   );
 }
 
+function getBookcaseFaculty(bookcaseId) {
+  return (
+    bookcaseFacultyMap.get(
+      String(bookcaseId)
+    ) || 'Other'
+  );
+}
+
+function getBookcaseRangeText(bookcaseId) {
+  const range = bookcaseCallNumberRangeMap.get(
+    String(bookcaseId)
+  );
+
+  if (!range) {
+    return 'No call number range available';
+  }
+
+  if (range.start === range.end) {
+    return range.start;
+  }
+
+  return `${range.start} – ${range.end}`;
+}
+
+
 // =============================================================================
 // FACULTY COLORS
 // =============================================================================
@@ -405,8 +383,7 @@ async function loadFacultyColors() {
     'data/faculty_colors.json'
   );
 
-  facultyColors =
-    await response.json();
+  facultyColors = await response.json();
 
   facultyColorMap = new Map(
     facultyColors.map(item => [
@@ -427,16 +404,39 @@ async function loadFacultyColors() {
 function lightenHexColor(hex, amount = 0.4) {
   const cleanHex = hex.replace('#', '');
 
-  const r = parseInt(cleanHex.substring(0, 2), 16);
-  const g = parseInt(cleanHex.substring(2, 4), 16);
-  const b = parseInt(cleanHex.substring(4, 6), 16);
+  const r = parseInt(
+    cleanHex.substring(0, 2),
+    16
+  );
 
-  const newR = Math.round(r + (255 - r) * amount);
-  const newG = Math.round(g + (255 - g) * amount);
-  const newB = Math.round(b + (255 - b) * amount);
+  const g = parseInt(
+    cleanHex.substring(2, 4),
+    16
+  );
+
+  const b = parseInt(
+    cleanHex.substring(4, 6),
+    16
+  );
+
+  const newR = Math.round(
+    r + (255 - r) * amount
+  );
+
+  const newG = Math.round(
+    g + (255 - g) * amount
+  );
+
+  const newB = Math.round(
+    b + (255 - b) * amount
+  );
 
   return `#${[newR, newG, newB]
-    .map(value => value.toString(16).padStart(2, '0'))
+    .map(value =>
+      value
+        .toString(16)
+        .padStart(2, '0')
+    )
     .join('')}`;
 }
 
@@ -465,8 +465,9 @@ function getFacultyColor(faculty) {
   } else if (
     facultyColorMap.has('OTHER')
   ) {
-    baseColor =
-      facultyColorMap.get('OTHER');
+    baseColor = facultyColorMap.get(
+      'OTHER'
+    );
   } else {
     baseColor = '#ffffff';
   }
@@ -480,6 +481,11 @@ function getFacultyColor(faculty) {
 
   return baseColor;
 }
+
+
+// =============================================================================
+// STATIC MAP UI
+// =============================================================================
 
 function addExpoLabels(shelfLayer) {
   expoLabelsFrontGroup.clearLayers();
@@ -515,7 +521,6 @@ function addExpoLabels(shelfLayer) {
       .push(layer);
   });
 
-
   // Create ONE label per Expo area,
   // centered across the entire reserved range.
   expoAreas.forEach((layers, expoName) => {
@@ -537,8 +542,7 @@ function addExpoLabels(shelfLayer) {
       return;
     }
 
-    const center =
-      bounds.getCenter();
+    const center = bounds.getCenter();
 
     const label = L.marker(
       center,
@@ -588,6 +592,7 @@ function addFacultyLegend() {
           .toUpperCase() !== 'OTHER'
     );
 
+    // Always push Other to the bottom.
     const orderedFacultyColors =
       other
         ? [...rest, other]
@@ -628,57 +633,47 @@ function addFacultyLegend() {
   legend.addTo(map);
 }
 
+
 // =============================================================================
-// SHELF STYLING
+// SHELF STYLING & INTERACTION
 // =============================================================================
 
 function shelfStyle(feature) {
-  const props =
-    feature.properties || {};
+  const props = feature.properties || {};
 
-  // Default: empty shelf structure
+  // Default: white wireframe with no fill.
   let fillColor = '#ffffff';
   let fillOpacity = 0;
 
-
-  // Permanent Expo areas get a colored background
+  // Permanent Expo areas get a faculty-colored background.
   if (
     props.reserved &&
     props.reserved_faculty
   ) {
-    fillColor =
-      getFacultyColor(
-        props.reserved_faculty
-      );
+    fillColor = getFacultyColor(
+      props.reserved_faculty
+    );
 
     fillOpacity = 0.9;
   }
 
-
   return {
-    // White shelf/grid structure
     color: '#ffffff',
     weight: 1.2,
-
     fillColor,
     fillOpacity
   };
 }
 
-
-// =============================================================================
-// SHELF TOOLTIPS
-// =============================================================================
-
 function addShelfInteraction(
   feature,
   layer
 ) {
-  const props =
-    feature.properties || {};
+  const props = feature.properties || {};
 
-  const bookcaseId =
-    getBookcaseLabel(feature);
+  const bookcaseId = getBookcaseLabel(
+    feature
+  );
 
   const reservedName = String(
     props.reserved_name || ''
@@ -696,10 +691,11 @@ function addShelfInteraction(
     getBookcaseTooltipText(bookcaseId)
   );
 
-  const side =
-    String(props.side || 'front')
-      .trim()
-      .toLowerCase();
+  const side = String(
+    props.side || 'front'
+  )
+    .trim()
+    .toLowerCase();
 
   layer.on({
     mouseover: () => {
@@ -726,8 +722,9 @@ function addShelfInteraction(
   });
 }
 
+
 // =============================================================================
-// LOAD SHELVES
+// SHELF LOADING
 // =============================================================================
 
 async function loadFrontShelves() {
@@ -741,12 +738,11 @@ async function loadFrontShelves() {
       'data/library_shelves_matrix.geojson'
     );
 
-    const data =
-      await response.json();
+    const data = await response.json();
 
-    shelvesFrontLayer =
-      L.geoJSON(data, {
-
+    shelvesFrontLayer = L.geoJSON(
+      data,
+      {
         style: shelfStyle,
 
         onEachFeature: (
@@ -758,8 +754,8 @@ async function loadFrontShelves() {
             layer
           );
         }
-
-      });
+      }
+    );
 
     shelvesFrontLayer.addTo(
       shelvesFrontGroup
@@ -776,7 +772,9 @@ async function loadFrontShelves() {
       }
     );
 
-    // Shift the wall slightly to the left
+    // Fine-tune the default wall position:
+    // positive X shifts the wall visually left;
+    // positive Y shifts the wall visually up.
     map.panBy(
       [50, 30],
       {
@@ -792,7 +790,6 @@ async function loadFrontShelves() {
   }
 }
 
-
 async function loadBackShelves() {
   try {
     const response = await fetch(
@@ -804,12 +801,11 @@ async function loadBackShelves() {
       'data/library_shelves_mirrored.geojson'
     );
 
-    const data =
-      await response.json();
+    const data = await response.json();
 
-    shelvesBackLayer =
-      L.geoJSON(data, {
-
+    shelvesBackLayer = L.geoJSON(
+      data,
+      {
         style: shelfStyle,
 
         onEachFeature: (
@@ -821,8 +817,8 @@ async function loadBackShelves() {
             layer
           );
         }
-
-      });
+      }
+    );
 
     shelvesBackLayer.addTo(
       shelvesBackGroup
@@ -838,22 +834,21 @@ async function loadBackShelves() {
 
 
 // =============================================================================
-// PLACEHOLDER BOOK STYLING
+// PLACEHOLDER BOOKS
 // =============================================================================
 
 function placeholderBookStyle(feature) {
-  const bookcaseId =
-    getBookcaseLabel(feature);
+  const bookcaseId = getBookcaseLabel(
+    feature
+  );
 
-  const faculty =
-    bookcaseFacultyMap.get(
-      bookcaseId
-    );
+  const faculty = bookcaseFacultyMap.get(
+    bookcaseId
+  );
 
   return {
     stroke: false,
-    fillColor:
-      getFacultyColor(faculty),
+    fillColor: getFacultyColor(faculty),
     fillOpacity: 1
   };
 }
@@ -862,21 +857,21 @@ function addPlaceholderBookInteraction(
   feature,
   layer
 ) {
-  const props =
-    feature.properties || {};
+  const props = feature.properties || {};
 
-  const bookcaseId =
-    getBookcaseLabel(feature);
+  const bookcaseId = getBookcaseLabel(
+    feature
+  );
 
-  const side =
-    String(props.side || 'front')
-      .trim()
-      .toLowerCase();
+  const side = String(
+    props.side || 'front'
+  )
+    .trim()
+    .toLowerCase();
 
-  const range =
-    bookcaseCallNumberRangeMap.get(
-      String(bookcaseId)
-    );
+  const range = bookcaseCallNumberRangeMap.get(
+    String(bookcaseId)
+  );
 
   if (range) {
     const rangeText =
@@ -894,7 +889,6 @@ function addPlaceholderBookInteraction(
   }
 
   layer.on({
-
     mouseover: () => {
       setBookcaseHoverStyle(
         bookcaseId,
@@ -916,51 +910,39 @@ function addPlaceholderBookInteraction(
         bookcaseId
       );
     }
-
   });
 }
-
-// =============================================================================
-// PLACEHOLDER BOOK RENDERING
-// =============================================================================
 
 function renderPlaceholderBooks(
   data,
   targetGroup,
   label
 ) {
-  // Remove existing version of this
-  // placeholder layer.
+  // Remove the existing version.
   targetGroup.clearLayers();
-
-
-  // Before a catalogue is uploaded,
-  // display every physically valid
-  // placeholder book.
-
-  let featuresToShow = [];
 
   // Placeholder books remain hidden until
   // catalogue data has been uploaded.
-  if (occupiedBookcases !== null) {
-    featuresToShow =
-      data.features.filter(feature => {
+  let featuresToShow = [];
 
-        const bookcaseId =
-          getBookcaseLabel(feature);
+  if (occupiedBookcases !== null) {
+    featuresToShow = data.features.filter(
+      feature => {
+        const bookcaseId = getBookcaseLabel(
+          feature
+        );
 
         return occupiedBookcases.has(
           bookcaseId
         );
-      });
+      }
+    );
   }
-
 
   const filteredData = {
     ...data,
     features: featuresToShow
   };
-
 
   const layer = L.geoJSON(
     filteredData,
@@ -971,19 +953,14 @@ function renderPlaceholderBooks(
     }
   );
 
-
   layer.addTo(targetGroup);
 
-
   if (label === 'front') {
-    placeholderBooksFrontLayer =
-      layer;
+    placeholderBooksFrontLayer = layer;
   } else {
-    placeholderBooksBackLayer =
-      layer;
+    placeholderBooksBackLayer = layer;
   }
 }
-
 
 async function loadPlaceholderBooks(
   url,
@@ -991,29 +968,21 @@ async function loadPlaceholderBooks(
   label
 ) {
   try {
-    const response =
-      await fetch(url);
+    const response = await fetch(url);
 
     checkResponse(
       response,
       url
     );
 
-    const data =
-      await response.json();
+    const data = await response.json();
 
-
-    // Keep original geometry
-    // untouched in memory.
-
+    // Keep the original geometry untouched in memory.
     if (label === 'front') {
-      placeholderBooksFrontData =
-        data;
+      placeholderBooksFrontData = data;
     } else {
-      placeholderBooksBackData =
-        data;
+      placeholderBooksBackData = data;
     }
-
 
     renderPlaceholderBooks(
       data,
@@ -1031,20 +1000,15 @@ async function loadPlaceholderBooks(
 
 
 // =============================================================================
-// APPLY CATALOGUE STATE TO MAP
+// CATALOGUE-DERIVED MAP UPDATES
 // =============================================================================
 
 function applyCatalogueOccupancy() {
-  if (
-    occupiedBookcases === null
-  ) {
+  if (occupiedBookcases === null) {
     return;
   }
 
-
-  if (
-    placeholderBooksFrontData
-  ) {
+  if (placeholderBooksFrontData) {
     renderPlaceholderBooks(
       placeholderBooksFrontData,
       placeholderBooksFrontGroup,
@@ -1052,10 +1016,7 @@ function applyCatalogueOccupancy() {
     );
   }
 
-
-  if (
-    placeholderBooksBackData
-  ) {
+  if (placeholderBooksBackData) {
     renderPlaceholderBooks(
       placeholderBooksBackData,
       placeholderBooksBackGroup,
@@ -1063,7 +1024,6 @@ function applyCatalogueOccupancy() {
     );
   }
 }
-
 
 function applyCatalogueColors() {
   if (shelvesFrontLayer) {
@@ -1079,432 +1039,247 @@ function applyCatalogueColors() {
   }
 }
 
-function getBookcaseFaculty(bookcaseId) {
-  return (
-    bookcaseFacultyMap.get(
-      String(bookcaseId)
-    ) || 'Other'
-  );
-}
-
-function getBookcaseRangeText(bookcaseId) {
-  const range =
-    bookcaseCallNumberRangeMap.get(
-      String(bookcaseId)
-    );
-
-  if (!range) {
-    return 'No call number range available';
-  }
-
-  if (range.start === range.end) {
-    return range.start;
-  }
-
-  return `${range.start} – ${range.end}`;
-}
-
-function openBookcaseExplorer(bookcaseId) {
-  const id =
-    String(bookcaseId);
-
-  if (
-    occupiedBookcases === null ||
-    !occupiedBookcases.has(id)
-  ) {
-    return;
-  }
-
-  const overlay =
-    document.getElementById(
-      'bookcase-modal-overlay'
-    );
-
-  const header =
-    document.getElementById(
-      'bookcase-modal-header'
-    );
-
-  const title =
-    document.getElementById(
-      'bookcase-modal-title'
-    );
-
-  const meta =
-    document.getElementById(
-      'bookcase-modal-meta'
-    );
-
-  const content =
-    document.getElementById(
-      'bookcase-modal-content'
-    );
-
-  if (
-    !overlay ||
-    !header ||
-    !title ||
-    !meta ||
-    !content
-  ) {
-    return;
-  }
-
-
-  // ---------------------------------------------------------------------------
-  // Faculty
-  // ---------------------------------------------------------------------------
-
-  const faculty =
-    getBookcaseFaculty(id);
-
-
-  // Uses your existing logic, including:
-  // - exact faculty colors
-  // - Faculty Recommendation lighter variants
-  // - Other fallback
-
-  const color =
-    getFacultyColor(faculty);
-
-
-  // ---------------------------------------------------------------------------
-  // Header
-  // ---------------------------------------------------------------------------
-
-  header.style.backgroundColor =
-    color;
-
-  title.textContent =
-    `Bookcase ${id}`;
-
-  meta.innerHTML =
-    `${faculty}<br>` +
-    `Call numbers: ${getBookcaseRangeText(id)}`;
-
-
-  // ---------------------------------------------------------------------------
-  // Placeholder content
-  // ---------------------------------------------------------------------------
-
-  content.innerHTML = `
-  <div
-    class="bookcase-browser"
-    style="--book-color: ${color};"
-  >
-    ${Array.from({ length: 6 }, (_, shelfIndex) => `
-      <div class="browser-shelf">
-
-        <div class="browser-books">
-          ${Array.from({ length: 25 }, (_, bookIndex) => `
-            <div
-              class="browser-book"
-              title="Placeholder book"
-              data-shelf="${shelfIndex + 1}"
-              data-book="${bookIndex + 1}"
-            ></div>
-          `).join('')}
-        </div>
-
-        <div class="browser-shelf-board"></div>
-
-      </div>
-    `).join('')}
-  </div>
-`;
-
-  // ---------------------------------------------------------------------------
-  // Show modal
-  // ---------------------------------------------------------------------------
-
-  overlay.hidden = false;
-}
-
-function closeBookcaseExplorer() {
-  const overlay =
-    document.getElementById(
-      'bookcase-modal-overlay'
-    );
-
-  if (overlay) {
-    overlay.hidden = true;
-  }
-}
 
 // =============================================================================
 // CATALOGUE CSV PROCESSING
 // =============================================================================
 
 function processCatalogueFile(file) {
+  Papa.parse(
+    file,
+    {
+      header: true,
+      skipEmptyLines: true,
 
-  Papa.parse(file, {
+      complete: results => {
+        const rows = results.data;
 
-    header: true,
+        // ---------------------------------------------------------------------
+        // Validate file
+        // ---------------------------------------------------------------------
 
-    skipEmptyLines: true,
-
-    complete: results => {
-
-      const rows =
-        results.data;
-
-
-      // -----------------------------------------------------------------------
-      // Basic file validation
-      // -----------------------------------------------------------------------
-
-      if (!rows.length) {
-        updateCatalogueStatus(
-          'No catalogue records found.',
-          true
-        );
-
-        return;
-      }
-
-
-      const requiredColumns = [
-        'LHR Item Barcode',
-        'LHR Item Call Number',
-        'Title',
-        'suffix 1',
-        'suffix 2',
-        'suffix 3'
-      ];
-
-
-      const actualColumns =
-        results.meta.fields || [];
-
-
-      const missingColumns =
-        requiredColumns.filter(
-          column =>
-            !actualColumns.includes(
-              column
-            )
-        );
-
-
-      if (
-        missingColumns.length > 0
-      ) {
-        updateCatalogueStatus(
-          `Missing columns: ${missingColumns.join(', ')}`,
-          true
-        );
-
-        return;
-      }
-
-
-      // -----------------------------------------------------------------------
-      // Store catalogue in browser memory
-      // -----------------------------------------------------------------------
-
-      catalogueRows =
-        rows;
-
-
-      occupiedBookcases =
-        new Set();
-
-
-      bookcaseFacultyMap =
-        new Map();
-
-      bookcaseCallNumberRangeMap =
-        new Map();
-
-      callNumberIndex = [];
-
-      const callNumbersByBookcase =
-        new Map();
-
-      let locatedBooks = 0;
-      let unlocatedBooks = 0;
-
-
-      // -----------------------------------------------------------------------
-      // Parse bookcase + faculty metadata
-      // -----------------------------------------------------------------------
-
-      rows.forEach(row => {
-
-        const bookcaseId =
-          parseBookcaseFromSuffix(
-            row['suffix 3']
+        if (!rows.length) {
+          updateCatalogueStatus(
+            'No catalogue records found.',
+            true
           );
 
-
-        if (!bookcaseId) {
-          unlocatedBooks++;
+          setCallNumberSearchEnabled(false);
           return;
         }
 
-        const callnum = String(
-          row['LHR Item Call Number'] || ''
-        ).trim();
+        const requiredColumns = [
+          'LHR Item Barcode',
+          'LHR Item Call Number',
+          'Title',
+          'suffix 1',
+          'suffix 2',
+          'suffix 3'
+        ];
 
-        if (callnum) {
-          callNumberIndex.push({
-            callnum,
-            normalizedCallnum:
-              normalizeCallNumber(callnum),
-            bookcaseId
-          });
-        }
+        const actualColumns =
+          results.meta.fields || [];
 
-        occupiedBookcases.add(
-          bookcaseId
-        );
-
-        locatedBooks++;
-
-
-        const faculty = String(
-          row['suffix 2'] || ''
-        ).trim();
-
-        const callNumber = String(
-          row['LHR Item Call Number'] || ''
-        ).trim();
-
-        if (callNumber) {
-
-          if (
-            !callNumbersByBookcase.has(
-              bookcaseId
-            )
-          ) {
-            callNumbersByBookcase.set(
-              bookcaseId,
-              []
-            );
-          }
-
-          callNumbersByBookcase
-            .get(bookcaseId)
-            .push(callNumber);
-        }
-
-
-        // For now, first faculty encountered
-        // for a bookcase determines its color.
-        //
-        // Later we can add QA checking for
-        // bookcases containing conflicting
-        // suffix 2 values.
-
-        if (
-          !bookcaseFacultyMap.has(
-            bookcaseId
-          )
-        ) {
-          bookcaseFacultyMap.set(
-            bookcaseId,
-            faculty
+        const missingColumns =
+          requiredColumns.filter(
+            column =>
+              !actualColumns.includes(
+                column
+              )
           );
+
+        if (missingColumns.length > 0) {
+          updateCatalogueStatus(
+            `Missing columns: ${missingColumns.join(', ')}`,
+            true
+          );
+
+          setCallNumberSearchEnabled(false);
+          return;
         }
 
-      });
+        // ---------------------------------------------------------------------
+        // Reset and store catalogue state
+        // ---------------------------------------------------------------------
 
+        catalogueRows = rows;
 
-      // -----------------------------------------------------------------------
-      // Apply catalogue to map
-      // -----------------------------------------------------------------------
+        occupiedBookcases = new Set();
+        bookcaseFacultyMap = new Map();
+        bookcaseCallNumberRangeMap = new Map();
+        callNumberIndex = [];
 
-      // Calculate first and last call number
-      // for every occupied bookcase.
+        const callNumbersByBookcase =
+          new Map();
 
-      callNumbersByBookcase.forEach(
-        (callNumbers, bookcaseId) => {
+        let locatedBooks = 0;
+        let unlocatedBooks = 0;
 
-          const sorted = [
-            ...new Set(callNumbers)
-          ].sort(compareCallNumbers);
+        // ---------------------------------------------------------------------
+        // Parse bookcase, faculty and call-number metadata
+        // ---------------------------------------------------------------------
 
-          if (sorted.length === 0) {
+        rows.forEach(row => {
+          const bookcaseId =
+            parseBookcaseFromSuffix(
+              row['suffix 3']
+            );
+
+          if (!bookcaseId) {
+            unlocatedBooks++;
             return;
           }
 
-          bookcaseCallNumberRangeMap.set(
-            bookcaseId,
-            {
-              start: sorted[0],
-              end: sorted[sorted.length - 1]
-            }
+          const callNumber = String(
+            row['LHR Item Call Number'] || ''
+          ).trim();
+
+          const faculty = String(
+            row['suffix 2'] || ''
+          ).trim();
+
+          occupiedBookcases.add(
+            bookcaseId
           );
-        }
-      );
 
-      applyCatalogueOccupancy();
+          locatedBooks++;
 
-      applyCatalogueColors();
+          // Search index.
+          if (callNumber) {
+            callNumberIndex.push({
+              callnum: callNumber,
+              normalizedCallnum:
+                normalizeCallNumber(
+                  callNumber
+                ),
+              bookcaseId
+            });
+          }
 
+          // Call numbers grouped by bookcase.
+          if (callNumber) {
+            if (
+              !callNumbersByBookcase.has(
+                bookcaseId
+              )
+            ) {
+              callNumbersByBookcase.set(
+                bookcaseId,
+                []
+              );
+            }
 
-      console.log(
-        'Catalogue rows:',
-        catalogueRows
-      );
+            callNumbersByBookcase
+              .get(bookcaseId)
+              .push(callNumber);
+          }
 
+          // First faculty encountered for a bookcase
+          // determines its display color.
+          if (
+            !bookcaseFacultyMap.has(
+              bookcaseId
+            )
+          ) {
+            bookcaseFacultyMap.set(
+              bookcaseId,
+              faculty
+            );
+          }
+        });
 
-      console.log(
-        'Occupied bookcases:',
-        occupiedBookcases
-      );
+        // ---------------------------------------------------------------------
+        // Calculate call-number ranges
+        // ---------------------------------------------------------------------
 
+        callNumbersByBookcase.forEach(
+          (callNumbers, bookcaseId) => {
+            const sorted = [
+              ...new Set(callNumbers)
+            ].sort(compareCallNumbers);
 
-      console.log(
-        'Bookcase faculties:',
-        bookcaseFacultyMap
-      );
+            if (sorted.length === 0) {
+              return;
+            }
 
+            bookcaseCallNumberRangeMap.set(
+              bookcaseId,
+              {
+                start: sorted[0],
+                end: sorted[sorted.length - 1]
+              }
+            );
+          }
+        );
 
-      // -----------------------------------------------------------------------
-      // UI status
-      // -----------------------------------------------------------------------
+        // ---------------------------------------------------------------------
+        // Apply catalogue state to map
+        // ---------------------------------------------------------------------
 
-      updateCatalogueStatus(
-        `${locatedBooks.toLocaleString()} books loaded across ` +
-        `${occupiedBookcases.size.toLocaleString()} bookcases` +
-        (
-          unlocatedBooks > 0
-            ? ` · ${unlocatedBooks.toLocaleString()} without a valid bookcase`
-            : ''
-        )
-      );
-    },
+        applyCatalogueOccupancy();
+        applyCatalogueColors();
 
+        // Search is available only after a valid
+        // catalogue has finished processing.
+        setCallNumberSearchEnabled(true);
 
-    error: error => {
+        console.log(
+          'Catalogue rows:',
+          catalogueRows
+        );
 
-      console.error(
-        'Catalogue CSV could not be parsed:',
-        error
-      );
+        console.log(
+          'Occupied bookcases:',
+          occupiedBookcases
+        );
 
+        console.log(
+          'Bookcase faculties:',
+          bookcaseFacultyMap
+        );
 
-      updateCatalogueStatus(
-        'Could not read catalogue file.',
-        true
-      );
+        // ---------------------------------------------------------------------
+        // Update UI
+        // ---------------------------------------------------------------------
+
+        updateCatalogueStatus(
+          `${locatedBooks.toLocaleString()} books loaded across ` +
+          `${occupiedBookcases.size.toLocaleString()} bookcases` +
+          (
+            unlocatedBooks > 0
+              ? ` · ${unlocatedBooks.toLocaleString()} without a valid bookcase`
+              : ''
+          )
+        );
+      },
+
+      error: error => {
+        console.error(
+          'Catalogue CSV could not be parsed:',
+          error
+        );
+
+        updateCatalogueStatus(
+          'Could not read catalogue file.',
+          true
+        );
+
+        setCallNumberSearchEnabled(false);
+      }
     }
-
-  });
+  );
 }
 
 // =============================================================================
-// ZOOMING
+// SEARCH & NAVIGATION
 // =============================================================================
 
 function setActiveSideForBookcase(
   bookcaseId
 ) {
-  const isBack =
-    /B$/i.test(
-      String(bookcaseId)
-    );
+  const isBack = /B$/i.test(
+    String(bookcaseId)
+  );
 
   map.removeLayer(frontGroup);
   map.removeLayer(backGroup);
@@ -1516,7 +1291,6 @@ function setActiveSideForBookcase(
   }
 }
 
-
 function findBookcaseLayers(
   shelfLayer,
   bookcaseId
@@ -1524,8 +1298,7 @@ function findBookcaseLayers(
   const matches = [];
 
   shelfLayer.eachLayer(layer => {
-    const feature =
-      layer.feature;
+    const feature = layer.feature;
 
     if (
       getBookcaseLabel(feature) ===
@@ -1538,14 +1311,10 @@ function findBookcaseLayers(
   return matches;
 }
 
-
-function zoomToBookcase(
-  bookcaseId
-) {
-  const isBack =
-    /B$/i.test(
-      String(bookcaseId)
-    );
+function zoomToBookcase(bookcaseId) {
+  const isBack = /B$/i.test(
+    String(bookcaseId)
+  );
 
   const shelfLayer =
     isBack
@@ -1556,11 +1325,10 @@ function zoomToBookcase(
     return;
   }
 
-  const layers =
-    findBookcaseLayers(
-      shelfLayer,
-      bookcaseId
-    );
+  const layers = findBookcaseLayers(
+    shelfLayer,
+    bookcaseId
+  );
 
   if (!layers.length) {
     return;
@@ -1574,10 +1342,9 @@ function zoomToBookcase(
 
   layers.forEach(layer => {
     if (!bounds) {
-      bounds =
-        L.latLngBounds(
-          layer.getBounds()
-        );
+      bounds = L.latLngBounds(
+        layer.getBounds()
+      );
     } else {
       bounds.extend(
         layer.getBounds()
@@ -1589,36 +1356,26 @@ function zoomToBookcase(
     bounds.pad(0.8)
   );
 
-  // Open tooltip on the middle shelf
-  const middleLayer =
-    layers[
-    Math.floor(
-      layers.length / 2
-    )
-    ];
+  // Open tooltip on the middle shelf.
+  const middleLayer = layers[
+    Math.floor(layers.length / 2)
+  ];
 
   if (middleLayer) {
     middleLayer.openTooltip();
   }
 }
 
-
-// =============================================================================
-// SEARCH HANDLER
-// =============================================================================
-
-function searchByCallNumber(
-  query
-) {
-  const match =
-    findBestCallNumberMatch(
-      query
-    );
+function searchByCallNumber(query) {
+  const match = findBestCallNumberMatch(
+    query
+  );
 
   if (!match) {
     updateCallNumberSearchStatus(
       'No call number found.'
     );
+
     return;
   }
 
@@ -1637,6 +1394,156 @@ function searchByCallNumber(
   );
 }
 
+
+// =============================================================================
+// BOOKCASE EXPLORER
+// =============================================================================
+
+function openBookcaseExplorer(bookcaseId) {
+  const id = String(bookcaseId);
+
+  // Only catalogue-occupied bookcases are currently browsable.
+  if (
+    occupiedBookcases === null ||
+    !occupiedBookcases.has(id)
+  ) {
+    return;
+  }
+
+  const overlay = document.getElementById(
+    'bookcase-modal-overlay'
+  );
+
+  const header = document.getElementById(
+    'bookcase-modal-header'
+  );
+
+  const title = document.getElementById(
+    'bookcase-modal-title'
+  );
+
+  const meta = document.getElementById(
+    'bookcase-modal-meta'
+  );
+
+  const content = document.getElementById(
+    'bookcase-modal-content'
+  );
+
+  if (
+    !overlay ||
+    !header ||
+    !title ||
+    !meta ||
+    !content
+  ) {
+    return;
+  }
+
+  const faculty = getBookcaseFaculty(id);
+  const color = getFacultyColor(faculty);
+
+  // ---------------------------------------------------------------------------
+  // Header
+  // ---------------------------------------------------------------------------
+
+  header.style.backgroundColor = color;
+
+  title.textContent =
+    `Bookcase ${id}`;
+
+  meta.innerHTML =
+    `${faculty}<br>` +
+    `Call numbers: ${getBookcaseRangeText(id)}`;
+
+  // ---------------------------------------------------------------------------
+  // Placeholder bookshelf prototype
+  // ---------------------------------------------------------------------------
+
+  content.innerHTML = `
+    <div
+      class="bookcase-browser"
+      style="--book-color: ${color};"
+    >
+      ${Array.from({ length: 6 }, (_, shelfIndex) => `
+        <div class="browser-shelf">
+
+          <div class="browser-books">
+            ${Array.from({ length: 25 }, (_, bookIndex) => `
+              <div
+                class="browser-book"
+                title="Placeholder book"
+                data-shelf="${shelfIndex + 1}"
+                data-book="${bookIndex + 1}"
+              ></div>
+            `).join('')}
+          </div>
+
+          <div class="browser-shelf-board"></div>
+
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  overlay.hidden = false;
+}
+
+function closeBookcaseExplorer() {
+  const overlay = document.getElementById(
+    'bookcase-modal-overlay'
+  );
+
+  if (overlay) {
+    overlay.hidden = true;
+  }
+}
+
+function initializeBookcaseExplorer() {
+  const overlay = document.getElementById(
+    'bookcase-modal-overlay'
+  );
+
+  const closeButton = document.getElementById(
+    'bookcase-modal-close'
+  );
+
+  // Close button.
+  if (closeButton) {
+    closeButton.addEventListener(
+      'click',
+      closeBookcaseExplorer
+    );
+  }
+
+  // Clicking the grey backdrop closes the explorer.
+  if (overlay) {
+    overlay.addEventListener(
+      'click',
+      event => {
+        if (event.target === overlay) {
+          closeBookcaseExplorer();
+        }
+      }
+    );
+  }
+
+  // Escape key closes the explorer.
+  document.addEventListener(
+    'keydown',
+    event => {
+      if (
+        event.key === 'Escape' &&
+        overlay &&
+        !overlay.hidden
+      ) {
+        closeBookcaseExplorer();
+      }
+    }
+  );
+}
+
+
 // =============================================================================
 // CATALOGUE UPLOAD UI
 // =============================================================================
@@ -1648,86 +1555,82 @@ const CatalogueUploadControl =
       position: 'bottomright'
     },
 
-
     onAdd: function () {
-
-      const div =
-        L.DomUtil.create(
-          'div',
-          'info catalogue-upload'
-        );
-
+      const div = L.DomUtil.create(
+        'div',
+        'info catalogue-upload'
+      );
 
       div.innerHTML = `
-  <div class="catalogue-upload-box">
+        <div class="catalogue-upload-box">
 
-    <div class="catalogue-tools-row">
+          <div class="catalogue-tools-row">
 
-      <!-- Catalogue upload -->
-      <div class="catalogue-tool catalogue-load-tool">
+            <!-- Catalogue upload -->
+            <div class="catalogue-tool catalogue-load-tool">
 
-        <div class="catalogue-upload-title">
-          Load catalogue data
+              <div class="catalogue-upload-title">
+                Load catalogue data
+              </div>
+
+              <input
+                id="catalogue-file-input"
+                type="file"
+                accept=".csv,text/csv"
+                class="catalogue-file-input"
+              >
+
+              <div
+                id="catalogue-upload-status"
+                class="catalogue-upload-status"
+              >
+                No catalogue loaded.
+              </div>
+
+            </div>
+
+            <!-- Call number search -->
+            <div class="catalogue-tool callnum-search-section">
+
+              <div class="callnum-search-title">
+                Search by call number
+              </div>
+
+              <div class="callnum-search-controls">
+
+                <input
+                  id="callnum-search-input"
+                  type="text"
+                  placeholder="Enter call number"
+                  class="callnum-search-input"
+                  disabled
+                >
+
+                <button
+                  id="callnum-search-button"
+                  type="button"
+                  class="callnum-search-button"
+                  disabled
+                >
+                  Search
+                </button>
+
+              </div>
+
+              <div
+                id="callnum-search-status"
+                class="callnum-search-status"
+              ></div>
+
+            </div>
+
+          </div>
+
         </div>
+      `;
 
-        <input
-          id="catalogue-file-input"
-          type="file"
-          accept=".csv,text/csv"
-          class="catalogue-file-input"
-        >
-
-        <div
-          id="catalogue-upload-status"
-          class="catalogue-upload-status"
-        >
-          No catalogue loaded
-        </div>
-
-      </div>
-
-
-      <!-- Call number search -->
-      <div class="catalogue-tool callnum-search-section">
-
-        <div class="callnum-search-title">
-          Search by call number
-        </div>
-
-        <div class="callnum-search-controls">
-
-          <input
-            id="callnum-search-input"
-            type="text"
-            placeholder="Enter call number"
-            class="callnum-search-input"
-            disabled
-          >
-
-          <button
-            id="callnum-search-button"
-            type="button"
-            class="callnum-search-button"
-            disabled
-          >
-            Search
-          </button>
-
-        </div>
-
-        <div
-          id="callnum-search-status"
-          class="callnum-search-status"
-        ></div>
-
-      </div>
-
-    </div>
-
-  </div>
-`;
-
-
+      // Prevent interaction with the UI from propagating
+      // through to Leaflet.
       L.DomEvent.disableClickPropagation(
         div
       );
@@ -1736,10 +1639,10 @@ const CatalogueUploadControl =
         div
       );
 
-
+      // Wait until Leaflet has inserted the control
+      // into the document before attaching listeners.
       setTimeout(() => {
-
-        const input =
+        const fileInput =
           document.getElementById(
             'catalogue-file-input'
           );
@@ -1754,7 +1657,14 @@ const CatalogueUploadControl =
             'callnum-search-button'
           );
 
-        if (searchButton) {
+        // ---------------------------------------------------------------------
+        // Search button
+        // ---------------------------------------------------------------------
+
+        if (
+          searchButton &&
+          searchInput
+        ) {
           searchButton.addEventListener(
             'click',
             () => {
@@ -1764,6 +1674,10 @@ const CatalogueUploadControl =
             }
           );
         }
+
+        // ---------------------------------------------------------------------
+        // Enter key in search field
+        // ---------------------------------------------------------------------
 
         if (searchInput) {
           searchInput.addEventListener(
@@ -1778,61 +1692,74 @@ const CatalogueUploadControl =
           );
         }
 
+        // ---------------------------------------------------------------------
+        // Catalogue file selection
+        // ---------------------------------------------------------------------
 
-        if (!input) {
+        if (!fileInput) {
           return;
         }
 
-
-        input.addEventListener(
+        fileInput.addEventListener(
           'change',
           event => {
-
             const file =
               event.target.files[0];
-
 
             if (!file) {
               return;
             }
 
+            // Disable search while a new file is being parsed.
+            setCallNumberSearchEnabled(
+              false
+            );
+
+            updateCallNumberSearchStatus(
+              ''
+            );
 
             updateCatalogueStatus(
               'Reading catalogue…'
             );
 
-
             processCatalogueFile(
               file
             );
-
-            const searchInput =
-              document.getElementById(
-                'callnum-search-input'
-              );
-
-            const searchButton =
-              document.getElementById(
-                'callnum-search-button'
-              );
-
-            if (searchInput) {
-              searchInput.disabled = false;
-            }
-
-            if (searchButton) {
-              searchButton.disabled = false;
-            }
           }
         );
 
       }, 0);
 
-
       return div;
     }
-
   });
+
+
+// =============================================================================
+// CATALOGUE UI HELPERS
+// =============================================================================
+
+function updateCatalogueStatus(
+  message,
+  isError = false
+) {
+  const status =
+    document.getElementById(
+      'catalogue-upload-status'
+    );
+
+  if (!status) {
+    return;
+  }
+
+  status.textContent = message;
+
+  status.classList.toggle(
+    'catalogue-upload-error',
+    isError
+  );
+}
 
 function updateCallNumberSearchStatus(
   message
@@ -1846,122 +1773,54 @@ function updateCallNumberSearchStatus(
     return;
   }
 
-  status.textContent =
-    message;
+  status.textContent = message;
 }
 
-
-map.addControl(
-  new CatalogueUploadControl()
-);
-
-
-// =============================================================================
-// CATALOGUE STATUS UI
-// =============================================================================
-
-function updateCatalogueStatus(
-  message,
-  isError = false
+function setCallNumberSearchEnabled(
+  enabled
 ) {
-
-  const status =
+  const searchInput =
     document.getElementById(
-      'catalogue-upload-status'
+      'callnum-search-input'
     );
 
+  const searchButton =
+    document.getElementById(
+      'callnum-search-button'
+    );
 
-  if (!status) {
-    return;
+  if (searchInput) {
+    searchInput.disabled =
+      !enabled;
   }
 
-
-  status.textContent =
-    message;
-
-
-  status.classList.toggle(
-    'catalogue-upload-error',
-    isError
-  );
+  if (searchButton) {
+    searchButton.disabled =
+      !enabled;
+  }
 }
 
 
 // =============================================================================
-// INITIAL LOAD
+// INITIALIZATION
 // =============================================================================
-
-function initializeBookcaseExplorer() {
-  const overlay =
-    document.getElementById(
-      'bookcase-modal-overlay'
-    );
-
-  const closeButton =
-    document.getElementById(
-      'bookcase-modal-close'
-    );
-
-  if (closeButton) {
-    closeButton.addEventListener(
-      'click',
-      closeBookcaseExplorer
-    );
-  }
-
-
-  // Clicking the grey backdrop also closes it.
-  if (overlay) {
-    overlay.addEventListener(
-      'click',
-      event => {
-
-        if (event.target === overlay) {
-          closeBookcaseExplorer();
-        }
-
-      }
-    );
-  }
-
-
-  // Escape key closes it too.
-  document.addEventListener(
-    'keydown',
-    event => {
-
-      if (
-        event.key === 'Escape' &&
-        overlay &&
-        !overlay.hidden
-      ) {
-        closeBookcaseExplorer();
-      }
-
-    }
-  );
-}
 
 async function initializeMapData() {
   try {
-
-    // Faculty colors need to exist
-    // before shelves are styled.
-
+    // Faculty colors must exist before
+    // shelves or Expo areas are styled.
     await loadFacultyColors();
+
     addFacultyLegend();
 
-
-    // Physical shelf geometry
-
+    // Load physical shelf geometry.
     await Promise.all([
       loadFrontShelves(),
       loadBackShelves()
     ]);
 
-
-    // Physical placeholder books
-
+    // Load placeholder geometry into memory.
+    // It remains invisible until catalogue data is uploaded.
     await Promise.all([
       loadPlaceholderBooks(
         'data/placeholder_books_front.geojson',
@@ -1976,37 +1835,42 @@ async function initializeMapData() {
       )
     ]);
 
-
   } catch (error) {
-
     console.error(
       'Failed to initialize map:',
       error
     );
-
   }
+}
+
+function initializeBaseLayers() {
+  // Front is the default side.
+  frontGroup.addTo(map);
+
+  // Front/back selector.
+  L.control.layers(
+    {
+      'Front': frontGroup,
+      'Back': backGroup
+    },
+    null,
+    {
+      collapsed: false,
+      position: 'bottomleft'
+    }
+  ).addTo(map);
+
+  // Catalogue upload + call-number search.
+  map.addControl(
+    new CatalogueUploadControl()
+  );
 }
 
 
 // =============================================================================
-// BASE LAYER
+// START APPLICATION
 // =============================================================================
 
-frontGroup.addTo(map);
-
-L.control.layers(
-  {
-    'Front': frontGroup,
-    'Back': backGroup
-  },
-  null,
-  {
-    collapsed: false,
-    position: 'bottomleft'
-  }
-).addTo(map);
-
-// Start application.
-
+initializeBaseLayers();
 initializeBookcaseExplorer();
 initializeMapData();
