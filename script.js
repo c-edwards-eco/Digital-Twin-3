@@ -2015,6 +2015,7 @@ initializeMapData();
 
 // ===== Disable browser/page zoom =====
 
+/*
 // Ctrl/Cmd + mouse wheel
 window.addEventListener(
   'wheel',
@@ -2040,4 +2041,4 @@ window.addEventListener(
       event.preventDefault();
     }
   }
-);
+); */
