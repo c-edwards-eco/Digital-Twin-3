@@ -21,7 +21,8 @@
 const map = L.map('map', {
   crs: L.CRS.Simple,
 
-  // No manual map navigation.
+  zoomSnap: 0.05,
+
   dragging: false,
   scrollWheelZoom: false,
   doubleClickZoom: false,
@@ -772,6 +773,13 @@ async function loadFrontShelves() {
       }
     );
 
+    map.setZoom(
+      map.getZoom() - 0.25,
+      {
+        animate: false
+      }
+    );
+
     // Fine-tune the default wall position:
     // positive X shifts the wall visually left;
     // positive Y shifts the wall visually up.
@@ -1374,9 +1382,9 @@ function focusBookcase(
   // Open tooltip on the middle shelf.
   const middleLayer =
     layers[
-      Math.floor(
-        layers.length / 2
-      )
+    Math.floor(
+      layers.length / 2
+    )
     ];
 
   if (middleLayer) {
