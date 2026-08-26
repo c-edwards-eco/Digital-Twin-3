@@ -1,4 +1,4 @@
-setwd("C:/Users/chloeedwards/OneDrive - Delft University of Technology/Documents/JS/digitaltwin3databasesupremacy/data")
+setwd("C:/Users/chloeedwards/OneDrive - Delft University of Technology/Documents/Github/Digital-Twin-3/data")
 
 ######### intro ################################################################
 
@@ -172,7 +172,7 @@ mapview( # check bookcases - should be 180
 # catalogue data loaded by the browser will later determine which
 # bookcases are actually shown.
 
-books_per_shelf <- 10
+books_per_shelf <-10
 
 # fixed seed means the "random" books look the same every time
 # we regenerate the static geometry.

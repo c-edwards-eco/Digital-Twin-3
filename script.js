@@ -628,51 +628,32 @@ function shelfStyle(feature) {
   const props =
     feature.properties || {};
 
-  const bookcaseId =
-    getBookcaseLabel(feature);
-
-  // Default before catalogue upload,
-  // and for empty ordinary bookcases.
+  // Default: empty shelf structure
   let fillColor = '#ffffff';
+  let fillOpacity = 0;
 
 
-  // ---------------------------------------------------------------------------
-  // 1. Permanent reserved/exhibition spaces
-  // ---------------------------------------------------------------------------
-
-  // This metadata comes from the static physical-wall files
-  // and takes precedence over catalogue coloring.
-
+  // Permanent Expo areas get a colored background
   if (
     props.reserved &&
     props.reserved_faculty
   ) {
-    fillColor = getFacultyColor(
-      props.reserved_faculty
-    );
-  }
-
-
-  // ---------------------------------------------------------------------------
-  // 2. Catalogue-driven faculty coloring
-  // ---------------------------------------------------------------------------
-
-  else if (
-    bookcaseFacultyMap.has(bookcaseId)
-  ) {
-    const faculty =
-      bookcaseFacultyMap.get(bookcaseId);
-
     fillColor =
-      getFacultyColor(faculty);
+      getFacultyColor(
+        props.reserved_faculty
+      );
+
+    fillOpacity = 0.9;
   }
 
 
   return {
-    color: '#000',
-    weight: 1,
+    // White shelf/grid structure
+    color: '#ffffff',
+    weight: 1.2,
+
     fillColor,
-    fillOpacity: 0.8
+    fillOpacity
   };
 }
 
@@ -842,25 +823,19 @@ async function loadBackShelves() {
 // =============================================================================
 
 function placeholderBookStyle(feature) {
-  const bookId = Number(
-    feature.properties.placeholder_book_id ??
-    feature.properties.book_id ??
-    0
-  );
+  const bookcaseId =
+    getBookcaseLabel(feature);
 
-  // Alternating neutral greys only for
-  // visual distinction between fake books.
-
-  const fillColor =
-    bookId % 2 === 0
-      ? '#4f4f4f'
-      : '#8a8a8a';
+  const faculty =
+    bookcaseFacultyMap.get(
+      bookcaseId
+    );
 
   return {
-    color: '#000',
-    weight: 0.5,
-    fillColor,
-    fillOpacity: 0.45
+    stroke: false,
+    fillColor:
+      getFacultyColor(faculty),
+    fillOpacity: 1
   };
 }
 
@@ -1193,8 +1168,11 @@ function openBookcaseExplorer(bookcaseId) {
   // Placeholder content
   // ---------------------------------------------------------------------------
 
-  content.innerHTML = `
-  <div class="bookcase-browser">
+content.innerHTML = `
+  <div
+    class="bookcase-browser"
+    style="--book-color: ${color};"
+  >
     ${Array.from({ length: 6 }, (_, shelfIndex) => `
       <div class="browser-shelf">
 
@@ -1215,7 +1193,6 @@ function openBookcaseExplorer(bookcaseId) {
     `).join('')}
   </div>
 `;
-
 
   // ---------------------------------------------------------------------------
   // Show modal
