@@ -1,11 +1,19 @@
-/* body / html */
+/* =============================================================================
+   PAGE LAYOUT
+   ============================================================================= */
+
 html,
 body {
   margin: 0;
   padding: 0;
+
+  width: 100%;
+  height: 100%;
+
+  overflow: hidden;
+
   color: #fff;
   background-color: #0C2340;
-  overflow: hidden;   /* removes main scrollbar */
 }
 
 html,
@@ -17,61 +25,104 @@ textarea {
   font-family: "Roboto", Arial, sans-serif;
 }
 
-/* link */
-a {
-  color: #00A6D6;
-  text-decoration: none;
+
+/* Body becomes a vertical flex layout:
+   header on top, main area fills everything below */
+body {
+  display: flex;
+  flex-direction: column;
 }
 
-a:hover {
-  color: #EC6842;
-}
 
-/* header */
+/* =============================================================================
+   HEADER
+   ============================================================================= */
+
 #header {
+  flex: 0 0 70px;
+
   display: flex;
   align-items: center;
+
   padding: 10px 20px;
+
+  box-sizing: border-box;
+
   background-color: #0C2340;
   color: white;
+
   gap: 15px;
-  height: 50px;
 }
 
 #header #logo {
-  height: 100%;
+  height: 50px;
 }
 
-/* main area: sidebar + map */
+
+/* =============================================================================
+   MAIN AREA
+   ============================================================================= */
+
 #main-content {
+  flex: 1 1 auto;
+
+  /* VERY important for nested flex layouts */
+  min-height: 0;
+
   display: flex;
-  flex: 1;
+
+  position: relative;
+
+  overflow: hidden;
 }
 
-/* sidebar */
+
+/* =============================================================================
+   SIDEBAR
+   ============================================================================= */
+
 #sidebar {
-  width: 250px;
+  flex: 0 0 250px;
+
+  min-height: 0;
+
   padding: 15px;
   margin: 15px;
+
+  box-sizing: border-box;
+
   background-color: #fff;
   color: #0C2340;
+
   border-radius: 5px;
+
   overflow-y: auto;
 }
 
-/* map container */
+
+/* =============================================================================
+   MAP
+   ============================================================================= */
+
 #map-container {
-  flex: 1;
+  flex: 1 1 auto;
+
+  min-width: 0;
+  min-height: 0;
+
   position: relative;
-  padding: 5px;
 }
 
-/* map styling */
+
+/* Force Leaflet to occupy the exact dimensions
+   of the remaining main-content area */
 #map {
-  width: 100%;
-  height: 100%;
   position: absolute;
   inset: 0;
+
+  width: 100%;
+  height: 100%;
+
   background-color: #0C2340;
 }
 
@@ -406,4 +457,9 @@ a:hover {
 
 .catalogue-upload-error {
   font-weight: bold;
+}
+
+#footer {
+  color: #0C2340;
+  height: 20px;
 }
