@@ -774,7 +774,7 @@ async function loadFrontShelves() {
     );
 
     map.setZoom(
-      map.getZoom() - 0.35,
+      map.getZoom() - 0.25,
       {
         animate: false
       }
