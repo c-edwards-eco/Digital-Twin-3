@@ -26,9 +26,9 @@ The default public view therefore describes the **physical and organizational st
 
 Library staff can additionally reconstruct the current collection using a saved Power BI query.
 
-1. Open the saved Power BI query **Digital Twin Data**.
-2. Export the results as a CSV file.
-3. Open the Digital Twin 3 in your browser.
+1. Open the saved Power BI query **Digital Twin data** under Public Folders -> NLTUD -> Bookwall.
+2. Export the results as a CSV file and unzip the folder in your downloads.
+3. Open the Digital Twin 3 application in your browser.
 4. Select **Load catalogue data** to upload the exported CSV.
 5. The application processes the file locally in the browser.
 
@@ -55,13 +55,33 @@ The application expects the **Digital Twin Data** export to contain the followin
 | Column | Purpose |
 | --- | --- |
 | `LHR Item Barcode` | Item identifier |
-| `LHR Item Call Number` | Call number used to determine the range represented by a bookcase |
 | `Title` | Bibliographic title |
-| `suffix 1` | Floor metadata |
-| `suffix 2` | Faculty/collection-area metadata used for coloring |
-| `suffix 3` | Bookcase assignment, e.g. `Bookcase 147` or `Bookcase 99B` |
+| `LHR Item Call Number` | Contains the item's call number and, where available, its Collection Wall location metadata |
 
-The column names are validated when a CSV is uploaded. A file that does not contain the expected fields will not be processed.
+The Power BI export includes the Collection Wall location metadata within the `LHR Item Call Number` field. For books assigned to the Collection Wall, this field follows the general format:
+
+`[Call Number] Floor [#] [Faculty/Collection Area] Bookcase [#]`
+
+For example:
+
+`ZWA158 Floor 1 Arts and Humanities Bookcase 159`
+
+The application parses this into:
+
+- **Call number:** `ZWA158`
+- **Floor:** `Floor 1`
+- **Faculty/collection area:** `Arts and Humanities`
+- **Bookcase:** `Bookcase 159`
+
+Back-side bookcases retain the `B` suffix, for example:
+
+`WBD210 Floor 2 IDE Bookcase 99B`
+
+Not every record in the Power BI export necessarily contains shelving information. Records without a `Floor` value in the `LHR Item Call Number` field will not be placed on the map and are excluded from the loaded collection. The application reports the number of these records after processing the file.
+
+The first row of the Power BI CSV export is skipped automatically before the column headers are read.
+
+The required column names are validated when a CSV is uploaded. A file that does not contain the expected fields will not be processed.
 
 ## Faculty coloring
 
@@ -69,7 +89,7 @@ Faculty colors are maintained separately in:
 
 `faculty_colors.json`
 
-When catalogue data is loaded, the value in `suffix 2` is matched against the configured faculty colors.
+When catalogue data is loaded, the value in the faculty field (second call number suffix) is matched against the configured faculty colors.
 
 Recognized faculties receive their corresponding color. Unrecognized values use the configured **Other** color.
 

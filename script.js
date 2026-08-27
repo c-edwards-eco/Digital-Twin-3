@@ -114,6 +114,56 @@ function reportLoadError(label, error) {
 // CALL NUMBER HELPERS
 // =============================================================================
 
+function parsePowerBICallNumber(value) {
+  const raw = String(value || '')
+    // Power BI / Excel exports may contain non-breaking spaces
+    .replace(/\u00A0/g, ' ')
+    .trim();
+
+  // If there is no Floor marker, this item cannot
+  // be placed on the Collection Wall.
+  if (!/\bFloor\b/i.test(raw)) {
+    return null;
+  }
+
+  // Normalize runs of whitespace for parsing.
+  const normalized = raw.replace(/\s+/g, ' ');
+
+  /*
+    Expected format:
+
+    ZWA158 Floor 1 Arts and Humanities Bookcase 159
+    WBD210 Floor 2 IDE Bookcase 99B
+
+    Groups:
+      1 = call number
+      2 = floor number
+      3 = faculty / area
+      4 = bookcase number
+  */
+
+  const match = normalized.match(
+    /^(.*?)\s+Floor\s+(\d+)\s+(.+?)\s+Bookcase\s+(\d+B?)\s*$/i
+  );
+
+  if (!match) {
+    return null;
+  }
+
+  const callNumber = match[1].trim();
+  const floorNumber = match[2].trim();
+  const faculty = match[3].trim();
+  const bookcaseNumber = match[4].toUpperCase();
+
+  return {
+    callNumber,
+    suffix1: `Floor ${floorNumber}`,
+    suffix2: faculty,
+    suffix3: `Bookcase ${bookcaseNumber}`,
+    bookcaseId: bookcaseNumber
+  };
+}
+
 function normalizeCallNumber(callnum) {
   return String(callnum || '')
     .toUpperCase()
@@ -1059,14 +1109,25 @@ function processCatalogueFile(file) {
       header: true,
       skipEmptyLines: true,
 
+      // Power BI adds an extra first row before
+      // the actual CSV header. Remove it before
+      // Papa Parse processes the file.
+      beforeFirstChunk: chunk => {
+        const lines = chunk.split(/\r?\n/);
+
+        return lines
+          .slice(1)
+          .join('\n');
+      },
+
       complete: results => {
-        const rows = results.data;
+        const rawRows = results.data;
 
         // ---------------------------------------------------------------------
         // Validate file
         // ---------------------------------------------------------------------
 
-        if (!rows.length) {
+        if (!rawRows.length) {
           updateCatalogueStatus(
             'No catalogue records found.',
             true
@@ -1076,13 +1137,12 @@ function processCatalogueFile(file) {
           return;
         }
 
+        // These are now the ONLY columns that
+        // actually exist in the Power BI export.
         const requiredColumns = [
           'LHR Item Barcode',
-          'LHR Item Call Number',
           'Title',
-          'suffix 1',
-          'suffix 2',
-          'suffix 3'
+          'LHR Item Call Number'
         ];
 
         const actualColumns =
@@ -1106,65 +1166,121 @@ function processCatalogueFile(file) {
           return;
         }
 
+
         // ---------------------------------------------------------------------
-        // Reset and store catalogue state
+        // Reset catalogue state
         // ---------------------------------------------------------------------
 
-        catalogueRows = rows;
+        catalogueRows = [];
 
-        occupiedBookcases = new Set();
-        bookcaseFacultyMap = new Map();
-        bookcaseCallNumberRangeMap = new Map();
+        occupiedBookcases =
+          new Set();
+
+        bookcaseFacultyMap =
+          new Map();
+
+        bookcaseCallNumberRangeMap =
+          new Map();
+
         callNumberIndex = [];
 
         const callNumbersByBookcase =
           new Map();
 
-        let locatedBooks = 0;
-        let unlocatedBooks = 0;
+        let loadedBooks = 0;
+        let unableToLoad = 0;
+
 
         // ---------------------------------------------------------------------
-        // Parse bookcase, faculty and call-number metadata
+        // Parse Power BI catalogue rows
         // ---------------------------------------------------------------------
 
-        rows.forEach(row => {
-          const bookcaseId =
-            parseBookcaseFromSuffix(
-              row['suffix 3']
+        rawRows.forEach(row => {
+          const parsed =
+            parsePowerBICallNumber(
+              row['LHR Item Call Number']
             );
 
-          if (!bookcaseId) {
-            unlocatedBooks++;
+          // No usable Collection Wall location.
+          if (!parsed) {
+            unableToLoad++;
             return;
           }
 
-          const callNumber = String(
-            row['LHR Item Call Number'] || ''
-          ).trim();
 
-          const faculty = String(
-            row['suffix 2'] || ''
-          ).trim();
+          // ---------------------------------------------------------------
+          // Create a normalized internal catalogue row
+          // ---------------------------------------------------------------
+
+          const normalizedRow = {
+            ...row,
+
+            // Replace the merged Power BI value
+            // with the actual call number.
+            'LHR Item Call Number':
+              parsed.callNumber,
+
+            // Recreate the conceptual suffix
+            // fields used elsewhere in the app.
+            'suffix 1':
+              parsed.suffix1,
+
+            'suffix 2':
+              parsed.suffix2,
+
+            'suffix 3':
+              parsed.suffix3
+          };
+
+
+          catalogueRows.push(
+            normalizedRow
+          );
+
+
+          const bookcaseId =
+            parsed.bookcaseId;
+
+          const callNumber =
+            parsed.callNumber;
+
+          const faculty =
+            parsed.suffix2;
+
+
+          // ---------------------------------------------------------------
+          // Occupancy
+          // ---------------------------------------------------------------
 
           occupiedBookcases.add(
             bookcaseId
           );
 
-          locatedBooks++;
+          loadedBooks++;
 
-          // Search index.
+
+          // ---------------------------------------------------------------
+          // Search index
+          // ---------------------------------------------------------------
+
           if (callNumber) {
             callNumberIndex.push({
               callnum: callNumber,
+
               normalizedCallnum:
                 normalizeCallNumber(
                   callNumber
                 ),
+
               bookcaseId
             });
           }
 
-          // Call numbers grouped by bookcase.
+
+          // ---------------------------------------------------------------
+          // Call numbers per bookcase
+          // ---------------------------------------------------------------
+
           if (callNumber) {
             if (
               !callNumbersByBookcase.has(
@@ -1182,6 +1298,11 @@ function processCatalogueFile(file) {
               .push(callNumber);
           }
 
+
+          // ---------------------------------------------------------------
+          // Faculty / area
+          // ---------------------------------------------------------------
+
           // First faculty encountered for a bookcase
           // determines its display color.
           if (
@@ -1195,6 +1316,7 @@ function processCatalogueFile(file) {
             );
           }
         });
+
 
         // ---------------------------------------------------------------------
         // Calculate call-number ranges
@@ -1214,11 +1336,15 @@ function processCatalogueFile(file) {
               bookcaseId,
               {
                 start: sorted[0],
-                end: sorted[sorted.length - 1]
+                end:
+                  sorted[
+                    sorted.length - 1
+                  ]
               }
             );
           }
         );
+
 
         // ---------------------------------------------------------------------
         // Apply catalogue state to map
@@ -1227,12 +1353,17 @@ function processCatalogueFile(file) {
         applyCatalogueOccupancy();
         applyCatalogueColors();
 
-        // Search is available only after a valid
-        // catalogue has finished processing.
-        setCallNumberSearchEnabled(true);
+        setCallNumberSearchEnabled(
+          true
+        );
+
+
+        // ---------------------------------------------------------------------
+        // Debugging
+        // ---------------------------------------------------------------------
 
         console.log(
-          'Catalogue rows:',
+          'Catalogue rows loaded:',
           catalogueRows
         );
 
@@ -1246,20 +1377,23 @@ function processCatalogueFile(file) {
           bookcaseFacultyMap
         );
 
+        console.log(
+          'Unable to load:',
+          unableToLoad
+        );
+
+
         // ---------------------------------------------------------------------
         // Update UI
         // ---------------------------------------------------------------------
 
         updateCatalogueStatus(
-          `${locatedBooks.toLocaleString()} books loaded across ` +
-          `${occupiedBookcases.size.toLocaleString()} bookcases` +
-          (
-            unlocatedBooks > 0
-              ? ` · ${unlocatedBooks.toLocaleString()} without a valid bookcase`
-              : ''
-          )
+          `${loadedBooks.toLocaleString()} books loaded across ` +
+          `${occupiedBookcases.size.toLocaleString()} bookcases ` +
+          `(${unableToLoad.toLocaleString()} unable to be loaded)`
         );
       },
+
 
       error: error => {
         console.error(
@@ -1272,7 +1406,9 @@ function processCatalogueFile(file) {
           true
         );
 
-        setCallNumberSearchEnabled(false);
+        setCallNumberSearchEnabled(
+          false
+        );
       }
     }
   );
