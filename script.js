@@ -1659,7 +1659,7 @@ function openBookcaseExplorer(bookcaseId) {
           data-shelf="${shelfIndex + 1}"
         >
 
-          <div class="browser-books">
+          <div class="browser-books ${shelfIndex % 2 === 0 ? 'align-left' : 'align-right'}">
 
             ${shelfBooks.map(book => `
               <div
@@ -1804,6 +1804,14 @@ function distributeBooksAcrossShelves(
   books,
   shelfCount = 6
 ) {
+  // If spreading across all six shelves would result
+  // in fewer than 5 books per shelf, use only
+  // the first two visual shelves instead.
+  const activeShelfCount =
+    books.length / shelfCount < 5
+      ? 2
+      : shelfCount;
+
   const shelves =
     Array.from(
       { length: shelfCount },
@@ -1812,24 +1820,26 @@ function distributeBooksAcrossShelves(
 
   const baseSize =
     Math.floor(
-      books.length / shelfCount
+      books.length / activeShelfCount
     );
 
   const remainder =
-    books.length % shelfCount;
+    books.length % activeShelfCount;
 
   let currentIndex = 0;
 
   for (
     let shelfIndex = 0;
-    shelfIndex < shelfCount;
+    shelfIndex < activeShelfCount;
     shelfIndex++
   ) {
-    // Earlier shelves receive one extra book
-    // when the total does not divide evenly by six.
     const shelfSize =
       baseSize +
-      (shelfIndex < remainder ? 1 : 0);
+      (
+        shelfIndex < remainder
+          ? 1
+          : 0
+      );
 
     shelves[shelfIndex] =
       books.slice(

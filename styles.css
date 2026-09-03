@@ -251,11 +251,18 @@ body {
 
   display: flex;
   align-items: flex-end;
-  justify-content: center;
 
   gap: 3px;
 
   padding: 0 10px;
+}
+
+.browser-books.align-left {
+  justify-content: flex-start;
+}
+
+.browser-books.align-right {
+  justify-content: flex-end;
 }
 
 
