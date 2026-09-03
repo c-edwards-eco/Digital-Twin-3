@@ -124,27 +124,28 @@ body {
   background-color: #0C2340;
 }
 
-.legend, .leaflet-control-layers {
+.legend,
+.leaflet-control-layers {
   background: white;
   color: #0C2340;
   padding: 10px;
   border-radius: 8px !important;
   border: none !important;
-  box-shadow: 0 0 6px rgba(0,0,0,0.2) !important;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.2) !important;
   line-height: 18px;
 }
 
 .topic-label div {
-  display: inline-block;          
+  display: inline-block;
   font-size: 12px;
   font-weight: bold;
-  color: black;                   
-  background: rgba(255,255,255,0.8);
+  color: black;
+  background: rgba(255, 255, 255, 0.8);
   padding: 3px 6px;
   border-radius: 4px;
   white-space: nowrap;
-  box-shadow: 0 0 2px #000;      
-  text-align: center;             
+  box-shadow: 0 0 2px #000;
+  text-align: center;
 }
 
 /* ===== Bookcase Explorer ===== */
@@ -260,12 +261,16 @@ body {
 
 /* Individual placeholder book spine */
 .browser-book {
-  width: 14px;
+  flex: 1 1 0;
+
+  min-width: 3px;
+  max-width: 14px;
+
   height: 72%;
 
   background: var(--book-color);
-  border-bottom: none;
 
+  border-bottom: none;
   border-radius: 2px 2px 0 0;
 
   cursor: pointer;
@@ -325,7 +330,7 @@ body {
   overflow-y: auto;
 
   color: #222;
-  background-color:#0C2340;
+  background-color: #0C2340;
 }
 
 /* extras */
@@ -334,7 +339,7 @@ body {
   background: white;
   padding: 10px;
   border-radius: 8px;
-  box-shadow: 0 0 6px rgba(0,0,0,0.2);
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.2);
   min-width: 220px;
 }
 
@@ -363,8 +368,7 @@ body {
 
 .leaflet-interactive.bookcase-hover {
   filter:
-    drop-shadow(0 0 3px rgba(255, 255, 255, 0.95))
-    drop-shadow(0 0 6px rgba(0, 0, 0, 0.35));
+    drop-shadow(0 0 3px rgba(255, 255, 255, 0.95)) drop-shadow(0 0 6px rgba(0, 0, 0, 0.35));
 }
 
 /* labels */
@@ -395,7 +399,7 @@ body {
   background: white;
   padding: 12px;
   border-radius: 6px;
-  color:#0C2340;
+  color: #0C2340;
   box-shadow: 0 1px 5px rgba(0, 0, 0, 0.35);
 }
 

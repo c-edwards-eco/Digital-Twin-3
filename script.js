@@ -109,6 +109,13 @@ function reportLoadError(label, error) {
   console.error(`${label} failed to load:`, error);
 }
 
+function escapeHtmlAttribute(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
 
 // =============================================================================
 // CALL NUMBER HELPERS
@@ -447,9 +454,6 @@ async function loadFacultyColors() {
     ])
   );
 
-  console.log(
-    `Loaded ${facultyColors.length} faculty colors.`
-  );
 }
 
 function lightenHexColor(hex, amount = 0.4) {
@@ -1605,6 +1609,58 @@ function openBookcaseExplorer(bookcaseId) {
   const faculty = getBookcaseFaculty(id);
   const color = getFacultyColor(faculty);
 
+
+  // ---------------------------------------------------------------------------
+  // Bookcase contents
+  // ---------------------------------------------------------------------------
+
+  const books =
+    getBooksForBookcase(id);
+
+  const shelves =
+    distributeBooksAcrossShelves(
+      books,
+      6
+    );
+
+  content.innerHTML = `
+  <div
+    class="bookcase-browser"
+    style="--book-color: ${color};"
+  >
+
+    ${shelves.map((shelfBooks, shelfIndex) => `
+      <div
+        class="browser-shelf"
+        data-shelf="${shelfIndex + 1}"
+      >
+
+        <div class="browser-books">
+
+          ${shelfBooks.map(book => `
+            <div
+              class="browser-book"
+              title="${escapeHtmlAttribute(
+    `${book.callNumber}\n${book.title}`
+  )}"
+              data-barcode="${escapeHtmlAttribute(
+    book.barcode
+  )}"
+            ></div>
+          `).join('')}
+
+        </div>
+
+        <div class="browser-shelf-board"></div>
+
+      </div>
+    `).join('')}
+
+  </div>
+`;
+
+  overlay.hidden = false;
+
   // ---------------------------------------------------------------------------
   // Header
   // ---------------------------------------------------------------------------
@@ -1616,40 +1672,10 @@ function openBookcaseExplorer(bookcaseId) {
 
   meta.innerHTML =
     `${faculty}<br>` +
-    `Call numbers: ${getBookcaseRangeText(id)}`;
-
-  // ---------------------------------------------------------------------------
-  // Placeholder bookshelf prototype
-  // ---------------------------------------------------------------------------
-
-  content.innerHTML = `
-    <div
-      class="bookcase-browser"
-      style="--book-color: ${color};"
-    >
-      ${Array.from({ length: 6 }, (_, shelfIndex) => `
-        <div class="browser-shelf">
-
-          <div class="browser-books">
-            ${Array.from({ length: 25 }, (_, bookIndex) => `
-              <div
-                class="browser-book"
-                title="Placeholder book"
-                data-shelf="${shelfIndex + 1}"
-                data-book="${bookIndex + 1}"
-              ></div>
-            `).join('')}
-          </div>
-
-          <div class="browser-shelf-board"></div>
-
-        </div>
-      `).join('')}
-    </div>
-  `;
-
-  overlay.hidden = false;
+    `Call numbers: ${getBookcaseRangeText(id)}<br>` +
+    `<b>${books.length.toLocaleString()}</b> books loaded`;
 }
+
 
 function closeBookcaseExplorer() {
   const overlay = document.getElementById(
@@ -1705,6 +1731,102 @@ function initializeBookcaseExplorer() {
   );
 }
 
+function getBooksForBookcase(bookcaseId) {
+  const id = String(bookcaseId);
+
+  const matchingRows = catalogueRows.filter(row => {
+    const rowBookcaseId =
+      parseBookcaseFromSuffix(
+        row['suffix 3']
+      );
+
+    return rowBookcaseId === id;
+  });
+
+
+  // Deduplicate primarily by barcode.
+  // If a barcode is missing, retain the record using
+  // a temporary row-specific key instead.
+  const uniqueBooks = new Map();
+
+  matchingRows.forEach((row, index) => {
+    const barcode = String(
+      row['LHR Item Barcode'] || ''
+    ).trim();
+
+    const key =
+      barcode ||
+      `missing-barcode-${index}`;
+
+    if (!uniqueBooks.has(key)) {
+      uniqueBooks.set(
+        key,
+        {
+          barcode,
+          callNumber: String(
+            row['LHR Item Call Number'] || ''
+          ).trim(),
+          title: String(
+            row['Title'] || ''
+          ).trim()
+        }
+      );
+    }
+  });
+
+
+  // Physical browsing order should follow call number.
+  return [...uniqueBooks.values()]
+    .sort((a, b) =>
+      compareCallNumbers(
+        a.callNumber,
+        b.callNumber
+      )
+    );
+}
+
+function distributeBooksAcrossShelves(
+  books,
+  shelfCount = 6
+) {
+  const shelves =
+    Array.from(
+      { length: shelfCount },
+      () => []
+    );
+
+  const baseSize =
+    Math.floor(
+      books.length / shelfCount
+    );
+
+  const remainder =
+    books.length % shelfCount;
+
+  let currentIndex = 0;
+
+  for (
+    let shelfIndex = 0;
+    shelfIndex < shelfCount;
+    shelfIndex++
+  ) {
+    // Earlier shelves receive one extra book
+    // when the total does not divide evenly by six.
+    const shelfSize =
+      baseSize +
+      (shelfIndex < remainder ? 1 : 0);
+
+    shelves[shelfIndex] =
+      books.slice(
+        currentIndex,
+        currentIndex + shelfSize
+      );
+
+    currentIndex += shelfSize;
+  }
+
+  return shelves;
+}
 
 // =============================================================================
 // CATALOGUE UPLOAD UI
