@@ -1606,8 +1606,11 @@ function openBookcaseExplorer(bookcaseId) {
     return;
   }
 
-  const faculty = getBookcaseFaculty(id);
-  const color = getFacultyColor(faculty);
+  const faculty =
+    getBookcaseFaculty(id);
+
+  const color =
+    getFacultyColor(faculty);
 
 
   // ---------------------------------------------------------------------------
@@ -1623,49 +1626,13 @@ function openBookcaseExplorer(bookcaseId) {
       6
     );
 
-  content.innerHTML = `
-  <div
-    class="bookcase-browser"
-    style="--book-color: ${color};"
-  >
-
-    ${shelves.map((shelfBooks, shelfIndex) => `
-      <div
-        class="browser-shelf"
-        data-shelf="${shelfIndex + 1}"
-      >
-
-        <div class="browser-books">
-
-          ${shelfBooks.map(book => `
-            <div
-              class="browser-book"
-              title="${escapeHtmlAttribute(
-    `${book.callNumber}\n${book.title}`
-  )}"
-              data-barcode="${escapeHtmlAttribute(
-    book.barcode
-  )}"
-            ></div>
-          `).join('')}
-
-        </div>
-
-        <div class="browser-shelf-board"></div>
-
-      </div>
-    `).join('')}
-
-  </div>
-`;
-
-  overlay.hidden = false;
 
   // ---------------------------------------------------------------------------
   // Header
   // ---------------------------------------------------------------------------
 
-  header.style.backgroundColor = color;
+  header.style.backgroundColor =
+    color;
 
   title.textContent =
     `Bookcase ${id}`;
@@ -1674,6 +1641,54 @@ function openBookcaseExplorer(bookcaseId) {
     `${faculty}<br>` +
     `Call numbers: ${getBookcaseRangeText(id)}<br>` +
     `<b>${books.length.toLocaleString()}</b> books loaded`;
+
+
+  // ---------------------------------------------------------------------------
+  // Bookshelf
+  // ---------------------------------------------------------------------------
+
+  content.innerHTML = `
+    <div
+      class="bookcase-browser"
+      style="--book-color: ${color};"
+    >
+
+      ${shelves.map((shelfBooks, shelfIndex) => `
+        <div
+          class="browser-shelf"
+          data-shelf="${shelfIndex + 1}"
+        >
+
+          <div class="browser-books">
+
+            ${shelfBooks.map(book => `
+              <div
+                class="browser-book"
+                title="${escapeHtmlAttribute(
+                  `${book.callNumber}\n${book.title}`
+                )}"
+                data-barcode="${escapeHtmlAttribute(
+                  book.barcode
+                )}"
+              ></div>
+            `).join('')}
+
+          </div>
+
+          <div class="browser-shelf-board"></div>
+
+        </div>
+      `).join('')}
+
+    </div>
+  `;
+
+
+  // ---------------------------------------------------------------------------
+  // Show explorer
+  // ---------------------------------------------------------------------------
+
+  overlay.hidden = false;
 }
 
 
