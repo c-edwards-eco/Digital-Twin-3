@@ -538,12 +538,12 @@ function getFacultyColor(faculty) {
 // STATIC MAP UI
 // =============================================================================
 
-function addExpoLabels(shelfLayer) {
+function addReservedAreaLabels(shelfLayer) {
   expoLabelsFrontGroup.clearLayers();
 
-  const expoAreas = new Map();
+  const reservedAreas = new Map();
 
-  // Group all reserved shelf polygons by Expo name.
+  // Group all reserved shelf polygons by reserved name.
   shelfLayer.eachLayer(layer => {
     const feature = layer.feature;
     const props = feature?.properties || {};
@@ -552,29 +552,28 @@ function addExpoLabels(shelfLayer) {
       props.reserved_name || ''
     ).trim();
 
-    // Only actual Expo areas get permanent labels.
     if (
       !props.reserved ||
-      !/\s+Expo$/i.test(reservedName)
+      !reservedName
     ) {
       return;
     }
 
-    if (!expoAreas.has(reservedName)) {
-      expoAreas.set(
+    if (!reservedAreas.has(reservedName)) {
+      reservedAreas.set(
         reservedName,
         []
       );
     }
 
-    expoAreas
+    reservedAreas
       .get(reservedName)
       .push(layer);
   });
 
-  // Create ONE label per Expo area,
+  // Create one label per reserved area,
   // centered across the entire reserved range.
-  expoAreas.forEach((layers, expoName) => {
+  reservedAreas.forEach((layers, areaName) => {
     let bounds = null;
 
     layers.forEach(layer => {
@@ -593,7 +592,8 @@ function addExpoLabels(shelfLayer) {
       return;
     }
 
-    const center = bounds.getCenter();
+    const center =
+      bounds.getCenter();
 
     const label = L.marker(
       center,
@@ -602,7 +602,7 @@ function addExpoLabels(shelfLayer) {
 
         icon: L.divIcon({
           className: 'expo-label',
-          html: `<div>${expoName}</div>`,
+          html: `<div>${areaName}</div>`,
           iconSize: null
         })
       }
@@ -733,7 +733,7 @@ function addShelfInteraction(
   // Expo areas already have permanent labels.
   if (
     props.reserved &&
-    /\s+Expo$/i.test(reservedName)
+    reservedName
   ) {
     return;
   }
@@ -812,7 +812,7 @@ async function loadFrontShelves() {
       shelvesFrontGroup
     );
 
-    addExpoLabels(
+    addReservedAreaLabels(
       shelvesFrontLayer
     );
 
@@ -1338,7 +1338,7 @@ function processCatalogueFile(file) {
                 start: sorted[0],
                 end:
                   sorted[
-                    sorted.length - 1
+                  sorted.length - 1
                   ]
               }
             );
