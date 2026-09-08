@@ -5,13 +5,15 @@
 // - front + back placeholder book geometry
 // - reserved/exhibition spaces
 // - faculty color configuration
+// - placeholder book layer (hidden by default)
+
 //
 // Runtime catalogue:
-// - CSV remains client-side only
-// - occupied bookcases retain placeholder books
-// - empty bookcases have placeholder books removed
-// - placeholder books are colored by suffix 2 faculty
+// - CSV processing is client-side only
+// - occupied bookcases show placeholder books
+// - placeholder books are colored by suffix 2 (faculty)
 // - unknown faculties use the "Other" color
+// - "books" are generated within bookcase view and show title/call number on hover
 
 
 // =============================================================================
@@ -66,9 +68,6 @@ const backGroup = L.layerGroup([
 let shelvesFrontLayer;
 let shelvesBackLayer;
 
-// Placeholder book layers.
-let placeholderBooksFrontLayer;
-let placeholderBooksBackLayer;
 
 // Original placeholder GeoJSON, kept unchanged in memory so it can be
 // re-filtered after catalogue upload.
@@ -142,8 +141,14 @@ function parsePowerBICallNumber(value) {
     ZWA158 Floor 1 Arts and Humanities Bookcase 159
     WBD210 Floor 2 IDE Bookcase 99B
 
+    If the format is changed in the future, this is where
+    you should update the regex e.g. if punctuation is added
+
+    In PowerBI the call number + suffix is merged into
+    the call num field
+
     Groups:
-      1 = call number
+      1 = (original) call number
       2 = floor number
       3 = faculty / area
       4 = bookcase number
@@ -164,9 +169,8 @@ function parsePowerBICallNumber(value) {
 
   return {
     callNumber,
-    suffix1: `Floor ${floorNumber}`,
-    suffix2: faculty,
-    suffix3: `Bookcase ${bookcaseNumber}`,
+    floor: `Floor ${floorNumber}`,
+    faculty,
     bookcaseId: bookcaseNumber
   };
 }
@@ -265,56 +269,19 @@ function findBestCallNumberMatch(query) {
 // BOOKCASE HELPERS
 // =============================================================================
 
+// From V2 (preparing for move) to V3 (post move) we went from shelf -> bookcase numbering
 function getBookcaseLabel(feature) {
-  const properties = feature?.properties || {};
+  const bookcaseId =
+    feature?.properties?.bookcase_id;
 
-  // V3 GeoJSON should contain bookcase_id directly.
   if (
-    properties.bookcase_id != null &&
-    properties.bookcase_id !== ''
+    bookcaseId == null ||
+    bookcaseId === ''
   ) {
-    return String(properties.bookcase_id).trim();
-  }
-
-  // Transitional fallback for older shelf geometry.
-  const shelfId = String(
-    properties.shelf_id || ''
-  ).trim();
-
-  const isBack = /B$/i.test(shelfId);
-
-  const shelfNumber = Number(
-    shelfId.replace(/B$/i, '')
-  );
-
-  if (!Number.isFinite(shelfNumber)) {
     return 'Unknown';
   }
 
-  const bookcaseNumber = Math.ceil(
-    shelfNumber / 6
-  );
-
-  return `${bookcaseNumber}${isBack ? 'B' : ''}`;
-}
-
-// Converts:
-// Bookcase 147 -> 147
-// Bookcase 99B -> 99B
-function parseBookcaseFromSuffix(value) {
-  const text = String(
-    value || ''
-  ).trim();
-
-  const match = text.match(
-    /^Bookcase\s+(\d+)(B?)$/i
-  );
-
-  if (!match) {
-    return null;
-  }
-
-  return `${match[1]}${match[2].toUpperCase()}`;
+  return String(bookcaseId).trim();
 }
 
 function getShelfGroupForBookcase(
@@ -1017,11 +984,6 @@ function renderPlaceholderBooks(
 
   layer.addTo(targetGroup);
 
-  if (label === 'front') {
-    placeholderBooksFrontLayer = layer;
-  } else {
-    placeholderBooksBackLayer = layer;
-  }
 }
 
 async function loadPlaceholderBooks(
@@ -1217,23 +1179,25 @@ function processCatalogueFile(file) {
           // ---------------------------------------------------------------
 
           const normalizedRow = {
-            ...row,
+            barcode: String(
+              row['LHR Item Barcode'] || ''
+            ).trim(),
 
-            // Replace the merged Power BI value
-            // with the actual call number.
-            'LHR Item Call Number':
+            title: String(
+              row['Title'] || ''
+            ).trim(),
+
+            callNumber:
               parsed.callNumber,
 
-            // Recreate the conceptual suffix
-            // fields used elsewhere in the app.
-            'suffix 1':
-              parsed.suffix1,
+            floor:
+              parsed.floor,
 
-            'suffix 2':
-              parsed.suffix2,
+            faculty:
+              parsed.faculty,
 
-            'suffix 3':
-              parsed.suffix3
+            bookcaseId:
+              parsed.bookcaseId
           };
 
 
@@ -1249,7 +1213,7 @@ function processCatalogueFile(file) {
             parsed.callNumber;
 
           const faculty =
-            parsed.suffix2;
+            parsed.faculty;
 
 
           // ---------------------------------------------------------------
@@ -1665,11 +1629,11 @@ function openBookcaseExplorer(bookcaseId) {
               <div
                 class="browser-book"
                 title="${escapeHtmlAttribute(
-                  `${book.callNumber}\n${book.title}`
-                )}"
+    `${book.callNumber}\n${book.title}`
+  )}"
                 data-barcode="${escapeHtmlAttribute(
-                  book.barcode
-                )}"
+    book.barcode
+  )}"
               ></div>
             `).join('')}
 
@@ -1747,50 +1711,40 @@ function initializeBookcaseExplorer() {
 }
 
 function getBooksForBookcase(bookcaseId) {
-  const id = String(bookcaseId);
+  const id =
+    String(bookcaseId);
 
-  const matchingRows = catalogueRows.filter(row => {
-    const rowBookcaseId =
-      parseBookcaseFromSuffix(
-        row['suffix 3']
-      );
+  const matchingRows =
+    catalogueRows.filter(
+      row =>
+        row.bookcaseId === id
+    );
 
-    return rowBookcaseId === id;
-  });
-
-
-  // Deduplicate primarily by barcode.
-  // If a barcode is missing, retain the record using
-  // a temporary row-specific key instead.
-  const uniqueBooks = new Map();
+  const uniqueBooks =
+    new Map();
 
   matchingRows.forEach((row, index) => {
-    const barcode = String(
-      row['LHR Item Barcode'] || ''
-    ).trim();
-
     const key =
-      barcode ||
+      row.barcode ||
       `missing-barcode-${index}`;
 
     if (!uniqueBooks.has(key)) {
       uniqueBooks.set(
         key,
         {
-          barcode,
-          callNumber: String(
-            row['LHR Item Call Number'] || ''
-          ).trim(),
-          title: String(
-            row['Title'] || ''
-          ).trim()
+          barcode:
+            row.barcode,
+
+          callNumber:
+            row.callNumber,
+
+          title:
+            row.title
         }
       );
     }
   });
 
-
-  // Physical browsing order should follow call number.
   return [...uniqueBooks.values()]
     .sort((a, b) =>
       compareCallNumbers(
