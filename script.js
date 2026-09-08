@@ -11,9 +11,9 @@
 // Runtime catalogue:
 // - CSV processing is client-side only
 // - occupied bookcases show placeholder books
-// - placeholder books are colored by suffix 2 (faculty)
+// - placeholder books are colored by faculty
 // - unknown faculties use the "Other" color
-// - "books" are generated within bookcase view and show title/call number on hover
+// - books + title/call number on bookcase explorer
 
 
 // =============================================================================
@@ -284,44 +284,13 @@ function getBookcaseLabel(feature) {
   return String(bookcaseId).trim();
 }
 
-function getShelfGroupForBookcase(
-  bookcaseId,
-  side
-) {
-  const shelfLayer =
-    side === 'back'
-      ? shelvesBackLayer
-      : shelvesFrontLayer;
-
-  if (!shelfLayer) {
-    return [];
-  }
-
-  const matches = [];
-
-  shelfLayer.eachLayer(layer => {
-    const feature = layer.feature;
-
-    if (
-      feature &&
-      getBookcaseLabel(feature) === String(bookcaseId)
-    ) {
-      matches.push(layer);
-    }
-  });
-
-  return matches;
-}
 
 function setBookcaseHoverStyle(
   bookcaseId,
-  side,
   isHovered
 ) {
-  const layers = getShelfGroupForBookcase(
-    bookcaseId,
-    side
-  );
+  const layers =
+    getBookcaseLayers(bookcaseId);
 
   layers.forEach(layer => {
     if (isHovered) {
@@ -330,21 +299,18 @@ function setBookcaseHoverStyle(
         color: '#ffffff'
       });
 
-      if (layer._path) {
-        layer._path.classList.add(
-          'bookcase-hover'
-        );
-      }
+      layer._path?.classList.add(
+        'bookcase-hover'
+      );
+
     } else {
       layer.setStyle(
         shelfStyle(layer.feature)
       );
 
-      if (layer._path) {
-        layer._path.classList.remove(
-          'bookcase-hover'
-        );
-      }
+      layer._path?.classList.remove(
+        'bookcase-hover'
+      );
     }
   });
 }
@@ -723,7 +689,6 @@ function addShelfInteraction(
     mouseover: () => {
       setBookcaseHoverStyle(
         bookcaseId,
-        side,
         true
       );
     },
@@ -731,7 +696,6 @@ function addShelfInteraction(
     mouseout: () => {
       setBookcaseHoverStyle(
         bookcaseId,
-        side,
         false
       );
     },
@@ -945,7 +909,6 @@ function addPlaceholderBookInteraction(
 function renderPlaceholderBooks(
   data,
   targetGroup,
-  label
 ) {
   // Remove the existing version.
   targetGroup.clearLayers();
@@ -1028,37 +991,18 @@ async function loadPlaceholderBooks(
 // =============================================================================
 
 function applyCatalogueOccupancy() {
-  if (occupiedBookcases === null) {
-    return;
-  }
 
   if (placeholderBooksFrontData) {
     renderPlaceholderBooks(
       placeholderBooksFrontData,
-      placeholderBooksFrontGroup,
-      'front'
+      placeholderBooksFrontGroup
     );
   }
 
   if (placeholderBooksBackData) {
     renderPlaceholderBooks(
       placeholderBooksBackData,
-      placeholderBooksBackGroup,
-      'back'
-    );
-  }
-}
-
-function applyCatalogueColors() {
-  if (shelvesFrontLayer) {
-    shelvesFrontLayer.setStyle(
-      shelfStyle
-    );
-  }
-
-  if (shelvesBackLayer) {
-    shelvesBackLayer.setStyle(
-      shelfStyle
+      placeholderBooksBackGroup
     );
   }
 }
@@ -1319,7 +1263,6 @@ function processCatalogueFile(file) {
         // ---------------------------------------------------------------------
 
         applyCatalogueOccupancy();
-        applyCatalogueColors();
 
         setCallNumberSearchEnabled(
           true
@@ -1403,97 +1346,70 @@ function setActiveSideForBookcase(
   }
 }
 
-function findBookcaseLayers(
-  shelfLayer,
-  bookcaseId
-) {
-  const matches = [];
+function getBookcaseLayers(bookcaseId) {
+  const id = String(bookcaseId);
+
+  const shelfLayer =
+    id.endsWith('B')
+      ? shelvesBackLayer
+      : shelvesFrontLayer;
+
+  if (!shelfLayer) {
+    return [];
+  }
+
+  const layers = [];
 
   shelfLayer.eachLayer(layer => {
-    const feature = layer.feature;
-
     if (
-      getBookcaseLabel(feature) ===
-      String(bookcaseId)
+      getBookcaseLabel(layer.feature) === id
     ) {
-      matches.push(layer);
+      layers.push(layer);
     }
   });
 
-  return matches;
+  return layers;
 }
 
 function temporarilyHighlightBookcase(
   bookcaseId,
   duration = 1800
 ) {
-  const side =
-    /B$/i.test(String(bookcaseId))
-      ? 'back'
-      : 'front';
-
   setBookcaseHoverStyle(
     bookcaseId,
-    side,
     true
   );
 
   setTimeout(() => {
     setBookcaseHoverStyle(
       bookcaseId,
-      side,
       false
     );
   }, duration);
 }
 
-function focusBookcase(
-  bookcaseId
-) {
-  const isBack = /B$/i.test(
-    String(bookcaseId)
-  );
-
-  const shelfLayer =
-    isBack
-      ? shelvesBackLayer
-      : shelvesFrontLayer;
-
-  if (!shelfLayer) {
-    return;
-  }
-
+function focusBookcase(bookcaseId) {
   const layers =
-    findBookcaseLayers(
-      shelfLayer,
-      bookcaseId
-    );
+    getBookcaseLayers(bookcaseId);
 
   if (!layers.length) {
     return;
   }
 
-  // Switch to the correct side.
   setActiveSideForBookcase(
     bookcaseId
   );
 
-  // Temporarily glow the whole bookcase.
   temporarilyHighlightBookcase(
     bookcaseId
   );
 
-  // Open tooltip on the middle shelf.
   const middleLayer =
     layers[
-    Math.floor(
-      layers.length / 2
-    )
+      Math.floor(layers.length / 2)
     ];
 
-  if (middleLayer) {
-    middleLayer.openTooltip();
-  }
+  middleLayer?.openTooltip();
 }
 
 function searchByCallNumber(query) {
