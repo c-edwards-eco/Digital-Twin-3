@@ -287,12 +287,9 @@ function updateBookcaseTooltips() {
     .filter(Boolean)
     .forEach((shelfLayer) => {
       shelfLayer.eachLayer((layer) => {
-        const bookcaseId =
-          getBookcaseLabel(layer.feature);
+        const bookcaseId = getBookcaseLabel(layer.feature);
 
-        layer.setTooltipContent(
-          getBookcaseTooltipText(bookcaseId)
-        );
+        layer.setTooltipContent(getBookcaseTooltipText(bookcaseId));
       });
     });
 }
@@ -1201,136 +1198,12 @@ const CatalogueUploadControl = L.Control.extend({
   onAdd: function () {
     const div = L.DomUtil.create("div", "info catalogue-upload");
 
-    div.innerHTML = `
-        <div class="catalogue-upload-box">
+    const template = document.getElementById("catalogue-control-template");
 
-          <div class="catalogue-tools-row">
+    div.appendChild(template.firstElementChild);
 
-            <!-- Catalogue upload -->
-            <div class="catalogue-tool catalogue-load-tool">
-
-              <div class="catalogue-upload-title">
-                Load catalogue data
-              </div>
-
-              <input
-                id="catalogue-file-input"
-                type="file"
-                accept=".csv,text/csv"
-                class="catalogue-file-input"
-              >
-
-              <div
-                id="catalogue-upload-status"
-                class="catalogue-upload-status"
-              >
-                No catalogue loaded.
-              </div>
-
-            </div>
-
-            <!-- Call number search -->
-            <div class="catalogue-tool callnum-search-section">
-
-              <div class="callnum-search-title">
-                Search by call number
-              </div>
-
-              <div class="callnum-search-controls">
-
-                <input
-                  id="callnum-search-input"
-                  type="text"
-                  placeholder="Enter call number"
-                  class="callnum-search-input"
-                  disabled
-                >
-
-                <button
-                  id="callnum-search-button"
-                  type="button"
-                  class="callnum-search-button"
-                  disabled
-                >
-                  Search
-                </button>
-
-              </div>
-
-              <div
-                id="callnum-search-status"
-                class="callnum-search-status"
-              ></div>
-
-            </div>
-
-          </div>
-
-        </div>
-      `;
-
-    // Prevent interaction with the UI from propagating
-    // through to Leaflet.
     L.DomEvent.disableClickPropagation(div);
-
     L.DomEvent.disableScrollPropagation(div);
-
-    // Wait until Leaflet has inserted the control
-    // into the document before attaching listeners.
-    setTimeout(() => {
-      const fileInput = document.getElementById("catalogue-file-input");
-
-      const searchInput = document.getElementById("callnum-search-input");
-
-      const searchButton = document.getElementById("callnum-search-button");
-
-      // ---------------------------------------------------------------------
-      // Search button
-      // ---------------------------------------------------------------------
-
-      if (searchButton && searchInput) {
-        searchButton.addEventListener("click", () => {
-          searchByCallNumber(searchInput.value);
-        });
-      }
-
-      // ---------------------------------------------------------------------
-      // Enter key in search field
-      // ---------------------------------------------------------------------
-
-      if (searchInput) {
-        searchInput.addEventListener("keydown", (event) => {
-          if (event.key === "Enter") {
-            searchByCallNumber(searchInput.value);
-          }
-        });
-      }
-
-      // ---------------------------------------------------------------------
-      // Catalogue file selection
-      // ---------------------------------------------------------------------
-
-      if (!fileInput) {
-        return;
-      }
-
-      fileInput.addEventListener("change", (event) => {
-        const file = event.target.files[0];
-
-        if (!file) {
-          return;
-        }
-
-        // Disable search while a new file is being parsed.
-        setCallNumberSearchEnabled(false);
-
-        updateCallNumberSearchStatus("");
-
-        updateCatalogueStatus("Reading catalogue…");
-
-        processCatalogueFile(file);
-      });
-    }, 0);
 
     return div;
   },
@@ -1339,6 +1212,49 @@ const CatalogueUploadControl = L.Control.extend({
 // =============================================================================
 // CATALOGUE UI HELPERS
 // =============================================================================
+
+function initializeCatalogueControls() {
+  const fileInput = document.getElementById("catalogue-file-input");
+
+  const searchInput = document.getElementById("callnum-search-input");
+
+  const searchButton = document.getElementById("callnum-search-button");
+
+  // Search button
+  if (searchButton && searchInput) {
+    searchButton.addEventListener("click", () => {
+      searchByCallNumber(searchInput.value);
+    });
+  }
+
+  // Enter key in search field
+  if (searchInput) {
+    searchInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        searchByCallNumber(searchInput.value);
+      }
+    });
+  }
+
+  // Catalogue file selection
+  if (fileInput) {
+    fileInput.addEventListener("change", (event) => {
+      const file = event.target.files[0];
+
+      if (!file) {
+        return;
+      }
+
+      setCallNumberSearchEnabled(false);
+
+      updateCallNumberSearchStatus("");
+
+      updateCatalogueStatus("Reading catalogue…");
+
+      processCatalogueFile(file);
+    });
+  }
+}
 
 function updateCatalogueStatus(message, isError = false) {
   const status = document.getElementById("catalogue-upload-status");
@@ -1432,6 +1348,8 @@ function initializeBaseLayers() {
 
   // Catalogue upload + call-number search.
   map.addControl(new CatalogueUploadControl());
+
+  initializeCatalogueControls();
 }
 
 // =============================================================================

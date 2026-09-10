@@ -1,92 +1,170 @@
 <!DOCTYPE html>
 <html lang="en">
 
-<head>
-  <meta charset="UTF-8">
-  <title>Digital Twin 3 Database Supremacy</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-  <link rel="stylesheet" href="styles.css" />
-  <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32.png?v=3">
-  <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=3">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-</head>
+  <head>
+    <meta charset="UTF-8">
+    <title>Digital Twin 3 Database Supremacy</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+    <link rel="stylesheet" href="styles.css"/>
+    <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32.png?v=3">
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=3">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  </head>
 
-<body>
+  <body>
 
-  <header id="header">
-    <img src="images/whitelogo.png" alt="University Logo" id="logo">
-    <h1></h1>
-  </header>
+    <header id="header">
+      <img src="images/whitelogo.png" alt="University Logo" id="logo">
+      <h1></h1>
+    </header>
 
-  <main id="main-content">
+    <main id="main-content">
 
-    <aside id="sidebar">
-      <h2>Collection Wall Virtual Shelves</h2>
-      <p>This map displays the four floors of the collection wall located at the <a
-          href="https://www.tudelft.nl/en/library/">TU Delft Central Library</a>.
-      </p>
-      <p> Faculty Expo areas are shaded by default, but <b>catalogue data must be manually uploaded to visualize book
-          placement.</b> Catalogue data is stored temporarily in the browser.
-      </p>
-      <p>Once catalogue data has been uploaded, you can explore the call number range for each bookcase, or search for a
-        specific call number to find it or its closest match.
-      </p>
-      <p>Clicking on a bookcase allows you to explore its contents. Hovering on a book will display its call number and
-        title.
-      </p>
-      <p>Books shown in bookcases are representative of the full range of titles within that bookcase and <b>do not
-          necessarily reflect the
-          precise location of that book within the bookcase.</b></p>
-      <p>Books may be placed in adjacent bookcases or be temporarily unavailable.</p>
-    </aside>
+      <aside id="sidebar">
+        <h2>Collection Wall Virtual Shelves</h2>
+        <p>This map displays the four floors of the collection wall located at the <a
+            href="https://www.tudelft.nl/en/library/"
+          >TU Delft Central Library</a>.
+        </p>
+        <p> Faculty Expo areas are shaded by default, but <b>catalogue data must be manually uploaded to visualize book
+            placement.</b> Catalogue data is stored temporarily in the browser.
+        </p>
+        <p>Once catalogue data has been uploaded, you can explore the call number range for each bookcase, or search for a
+          specific call number to find it or its closest match.
+        </p>
+        <p>Clicking on a bookcase allows you to explore its contents. Hovering on a book will display its call number and
+          title.
+        </p>
+        <p>Books shown in bookcases are representative of the full range of titles within that bookcase and <b>do not
+            necessarily reflect the
+            precise location of that book within the bookcase.</b></p>
+        <p>Books may be placed in adjacent bookcases or be temporarily unavailable.</p>
+      </aside>
 
-    <section id="map-container">
-      <div id="map"></div>
-    </section>
+      <section id="map-container">
+        <div id="map"></div>
+      </section>
 
-    <div id="bookcase-modal-overlay" class="bookcase-modal-overlay" hidden>
+      <div id="bookcase-modal-overlay" class="bookcase-modal-overlay" hidden>
 
-      <div id="bookcase-modal" class="bookcase-modal" role="dialog" aria-modal="true"
-        aria-labelledby="bookcase-modal-title">
+        <div
+          id="bookcase-modal"
+          class="bookcase-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="bookcase-modal-title"
+        >
 
-        <div id="bookcase-modal-header" class="bookcase-modal-header">
+          <div id="bookcase-modal-header" class="bookcase-modal-header">
 
-          <div class="bookcase-modal-heading">
+            <div class="bookcase-modal-heading">
 
-            <div id="bookcase-modal-title" class="bookcase-modal-title">
-              Bookcase
+              <div id="bookcase-modal-title" class="bookcase-modal-title">
+                Bookcase
+              </div>
+
+              <div id="bookcase-modal-meta" class="bookcase-modal-meta"></div>
+
             </div>
 
-            <div id="bookcase-modal-meta" class="bookcase-modal-meta"></div>
+            <button
+              id="bookcase-modal-close"
+              class="bookcase-modal-close"
+              type="button"
+              aria-label="Close bookcase explorer"
+            >
+              ×
+            </button>
 
           </div>
 
-          <button id="bookcase-modal-close" class="bookcase-modal-close" type="button"
-            aria-label="Close bookcase explorer">
-            ×
-          </button>
 
-        </div>
+          <div id="bookcase-modal-content" class="bookcase-modal-content">
+            <!-- Book exploration UI will go here next -->
+          </div>
 
-
-        <div id="bookcase-modal-content" class="bookcase-modal-content">
-          <!-- Book exploration UI will go here next -->
         </div>
 
       </div>
+    </main>
 
+    <div id="catalogue-control-template" hidden>
+      <div class="catalogue-upload-box">
+
+        <div class="catalogue-tools-row">
+
+          <!-- Catalogue upload -->
+          <div class="catalogue-tool catalogue-load-tool">
+
+            <div class="catalogue-upload-title">
+              Load catalogue data
+            </div>
+
+            <input
+              id="catalogue-file-input"
+              type="file"
+              accept=".csv,text/csv"
+              class="catalogue-file-input"
+            >
+
+            <div
+              id="catalogue-upload-status"
+              class="catalogue-upload-status"
+            >
+              No catalogue loaded.
+            </div>
+
+          </div>
+
+          <!-- Call number search -->
+          <div class="catalogue-tool callnum-search-section">
+
+            <div class="callnum-search-title">
+              Search by call number
+            </div>
+
+            <div class="callnum-search-controls">
+
+              <input
+                id="callnum-search-input"
+                type="text"
+                placeholder="Enter call number"
+                class="callnum-search-input"
+                disabled
+              >
+
+              <button
+                id="callnum-search-button"
+                type="button"
+                class="callnum-search-button"
+                disabled
+              >
+                Search
+              </button>
+
+            </div>
+
+            <div
+              id="callnum-search-status"
+              class="callnum-search-status"
+            ></div>
+
+          </div>
+
+        </div>
+
+      </div>
     </div>
-  </main>
 
-  <footer id="footer">
-  </footer>
+    <footer id="footer">
+    </footer>
 
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-  <script src="script.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <script src="script.js"></script>
 
-</body>
+  </body>
 
 </html>
