@@ -139,6 +139,10 @@ function parsePowerBICallNumber(value) {
     In PowerBI the call number + suffix is merged into
     the call num field
 
+    Handily within powerBI you can also filter the export 
+    by NA on suffix as a separate field to identify any books
+    missing suffix i.e. shelving information
+
     Groups:
       1 = (original) call number
       2 = floor number
@@ -193,7 +197,7 @@ function findBestCallNumberMatch(query) {
     return null;
   }
 
-  // Exact match first.
+  // Exact match first
   const exact = callNumberIndex.find(
     (item) => item.normalizedCallnum === normalizedQuery,
   );
@@ -202,7 +206,7 @@ function findBestCallNumberMatch(query) {
     return exact;
   }
 
-  // Otherwise find the natural-sort insertion point.
+  // Otherwise find the natural-sort insertion point
   const sorted = [...callNumberIndex].sort((a, b) =>
     compareCallNumbers(a.normalizedCallnum, b.normalizedCallnum),
   );
@@ -222,8 +226,8 @@ function findBestCallNumberMatch(query) {
   const prev = sorted[insertionIndex - 1];
   const next = sorted[insertionIndex];
 
-  // Prefer whichever side sorts closest.
-  // If ambiguous, prefer the following item.
+  // Prefer whichever side sorts closest
+  // If ambiguous, prefer the following item
   const prevCompare = Math.abs(
     compareCallNumbers(prev.normalizedCallnum, normalizedQuery),
   );
@@ -239,7 +243,8 @@ function findBestCallNumberMatch(query) {
 // BOOKCASE HELPERS
 // =============================================================================
 
-// From V2 (preparing for move) to V3 (post move) we went from shelf -> bookcase numbering
+// From V2 (preparing for move) to V3 (post move)
+// we went from shelf -> bookcase numbering
 function getBookcaseLabel(feature) {
   const bookcaseId = feature?.properties?.bookcase_id;
 
@@ -332,6 +337,10 @@ async function loadFacultyColors() {
   );
 }
 
+// Function could also be used later to lighten colors
+// for different topics e.g. breaking out within faculty
+// or could be altered/remade for darkening colors for diff
+// topics
 function lightenHexColor(hex, amount = 0.4) {
   const cleanHex = hex.replace("#", "");
 
@@ -407,7 +416,7 @@ function addReservedAreaLabels(shelfLayer) {
   });
 
   // Create one label per reserved area,
-  // centered across the entire reserved range.
+  // centered across the entire reserved range
   reservedAreas.forEach((layers, areaName) => {
     let bounds = null;
 
@@ -459,7 +468,7 @@ function addFacultyLegend() {
       (item) => String(item.faculty).trim().toUpperCase() !== "OTHER",
     );
 
-    // Always push Other to the bottom.
+    // Always push Other to the bottom
     const orderedFacultyColors = other ? [...rest, other] : rest;
 
     orderedFacultyColors.forEach((item) => {
@@ -497,6 +506,9 @@ function addFacultyLegend() {
 // SHELF STYLING & INTERACTION
 // =============================================================================
 
+// this is a particular set on the 1st floor with the thesis
+// prototype area
+
 function shelfStyle(feature) {
   const props = feature.properties || {};
 
@@ -511,12 +523,14 @@ function shelfStyle(feature) {
     fillOpacity = 0.9;
   }
 
-  return {
+  const style = {
     color: "#ffffff",
     weight: 1.2,
     fillColor,
     fillOpacity,
   };
+
+  return style; 
 }
 
 function addShelfInteraction(feature, layer) {
@@ -526,7 +540,7 @@ function addShelfInteraction(feature, layer) {
 
   const reservedName = String(props.reserved_name || "").trim();
 
-  // Expo areas already have permanent labels.
+  // Expo areas already have permanent labels
   if (props.reserved && reservedName) {
     return;
   }
@@ -582,7 +596,7 @@ async function loadFrontShelves() {
 
     // Fine-tune the default wall position:
     // positive X shifts the wall visually left;
-    // positive Y shifts the wall visually up.
+    // positive Y shifts the wall visually up
     map.panBy([50, 30], {
       animate: false,
     });
@@ -630,18 +644,21 @@ function placeholderBookStyle(feature) {
 }
 
 function renderPlaceholderBooks(data, targetGroup) {
-  // Remove the existing version.
+  // Remove the existing version
   targetGroup.clearLayers();
 
   // Placeholder books remain hidden until
-  // catalogue data has been uploaded.
+  // catalogue data has been uploaded
   let featuresToShow = [];
 
   if (occupiedBookcases !== null) {
     featuresToShow = data.features.filter((feature) => {
       const bookcaseId = getBookcaseLabel(feature);
+      const shelfId = feature.properties?.shelf_id;
 
-      return occupiedBookcases.has(bookcaseId);
+      return (
+        occupiedBookcases.has(bookcaseId)
+      );
     });
   }
 
@@ -666,7 +683,7 @@ async function loadPlaceholderBooks(url, targetGroup, label) {
 
     const data = await response.json();
 
-    // Keep the original geometry untouched in memory.
+    // Keep the original geometry untouched in memory
     if (label === "front") {
       placeholderBooksFrontData = data;
     } else {
@@ -728,12 +745,10 @@ function processCatalogueFile(file) {
         return;
       }
 
-      // These are now the ONLY columns that
-      // actually exist in the Power BI export.
       const requiredColumns = [
         "LHR Item Barcode",
         "Title",
-        "LHR Item Call Number",
+        "LHR Item Call Number", // this includes the suffix in the PowerBI export
       ];
 
       const actualColumns = results.meta.fields || [];
@@ -778,7 +793,7 @@ function processCatalogueFile(file) {
       rawRows.forEach((row) => {
         const parsed = parsePowerBICallNumber(row["LHR Item Call Number"]);
 
-        // No usable Collection Wall location.
+        // No usable Collection Wall location
         if (!parsed) {
           unableToLoad++;
           return;
