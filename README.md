@@ -2,11 +2,11 @@
 
 An interactive digital representation of the TU Delft Library Collection Wall.
 
-The Digital Twin 3 is designed around a simple principle: **the library catalogue is the source of truth for the collection**. The application contains the information required to represent the physical structure of the Collection Wall, while current information about the books themselves is loaded from library catalogue data when needed.
+The Digital Twin 3 is designed around a simple principle: **the library catalogue is the source of truth for the collection**. The application contains the information required to represent the physical structure of the Collection Wall, while current information about the books themselves is loaded from library catalogue data by the user.
 
-This avoids maintaining the same collection information separately in both the catalogue and the Digital Twin.
+This avoids maintaining the same collection information separately in both the catalogue and the application.
 
-The Digital Twin 3 is a refactored version of the Digital Twin 2, which was originally used as a companion application for the rearrangement of the Collection Wall. Instead of being run locally, this version is intended to be used and shared more widely, while being smoothly integrated with the newly enhanced library metadata.
+The Digital Twin 3 is a refactored version of the Digital Twin 2, which was originally used as a companion application for the rearrangement of the Collection Wall, containing precise shelf-by-shelf plans. Instead of being run locally, this version is intended to be used and shared more widely, while being smoothly integrated with the newly enhanced library metadata.
 
 ## What the application shows
 
@@ -18,15 +18,15 @@ By default, without loading any catalogue data, users can:
 - Hover over shelves to identify their bookcase number.
 - Switch between the front and back sides of the wall.
 - See the locations of permanent faculty exhibition areas.
-- See the general placement of faculty-organized books through the faculty color scheme.
+- See the general placement of faculty-organized books through the faculty color scheme associated with the exhibition areas.
 
-The default public view therefore describes the **physical and organizational structure of the Collection Wall**, rather than exposing individual catalogue records.
+The default public view therefore describes the **physical and organizational structure of the Collection Wall**, rather than the placement of individual catalogue records.
 
 ## Loading current catalogue data
 
 Library staff can additionally reconstruct the current collection using a saved Power BI query.
 
-1. Open the saved Power BI query **Digital Twin data** under Public Folders -> NLTUD -> Bookwall.
+1. Open the saved Power BI query **Digital Twin data** under Public Folders ➜ NLTUD ➜ Bookwall.
 2. Export the results as a CSV file and unzip the folder in your downloads.
 3. Open the Digital Twin 3 application in your browser.
 4. Select **Load catalogue data** to upload the exported CSV.
@@ -34,15 +34,19 @@ Library staff can additionally reconstruct the current collection using a saved 
 
 Once the catalogue data has been loaded, the map updates to reflect the current bookcase assignments recorded in the library catalogue.
 
-Bookcases containing books are populated with a representative book layer and shaded according to their faculty metadata. Hovering over the books displays the range of call numbers associated with that bookcase.
+Bookcases containing books are populated with a representative book layer and shaded according to their faculty metadata. Hovering over the books displays the range of call numbers  associated with that bookcase.
 
 Bookcases without books in the uploaded dataset remain empty.
 
+Clicking on a bookcase opens up the bookcase view and reveals the bookcase number, the associated faculty, the range of call numbers in that bookcase, and the number of books placed in it, alongisde representative books. 
+
+Individual books are distributed across representative shelves within the bookcase. Hovering on each book reveals the call number (e.g. "ABC123") and the title of the book. The placement of books on the bookshelf represents the relative position of each book, ordered by call number, but does **not** represent its precise location on the bookcase.
+
 ## Catalogue data and privacy
 
-Catalogue data is **not included in the hosted Digital Twin application**.
+Catalogue data is **not included in the hosted Digital Twin application**. It must be uploaded separately.
 
-The Power BI export is processed client-side in the user's browser. The uploaded catalogue data is held temporarily for the current page session and is not permanently stored by the application.
+The Power BI export ("Digital Twin data.csv") is processed client-side in the user's browser. The uploaded catalogue data is held temporarily for the current page session and is not permanently stored by the application.
 
 Refreshing or reopening the page returns the application to its default state and the catalogue data must be loaded again.
 
@@ -56,7 +60,7 @@ The application expects the **Digital Twin Data** export to contain the followin
 | --- | --- |
 | `LHR Item Barcode` | Item identifier |
 | `Title` | Bibliographic title |
-| `LHR Item Call Number` | Contains the item's call number and, where available, its Collection Wall location metadata |
+| `LHR Item Call Number` | Contains the item's call number and, where available, its Collection Wall location metadata (suffix) |
 
 The Power BI export includes the Collection Wall location metadata within the `LHR Item Call Number` field. For books assigned to the Collection Wall, this field follows the general format:
 
@@ -91,7 +95,7 @@ Faculty colors are maintained separately in:
 
 When catalogue data is loaded, the value in the faculty field (second call number suffix) is matched against the configured faculty colors.
 
-Recognized faculties receive their corresponding color. Unrecognized values use the configured **Other** color.
+Recognized faculties receive their corresponding color. Unrecognized values use the configured **Other** color. These are currently all located on the first floor of the book wall.
 
 Some collection areas are visually differentiated from the main faculty collection while retaining the faculty's base color. For example, a value such as:
 
@@ -157,11 +161,11 @@ These areas:
 - Can have permanent labels such as `BK Expo` or `AE Expo`.
 - Are visible without loading catalogue data.
 
-This information represents permanent or semi-permanent characteristics of the physical wall rather than bibliographic metadata and therefore lives outside the library catalogue.
+This information represents permanent or semi-permanent characteristics of the physical wall rather than bibliographic metadata and therefore lives outside the library catalogue. In essence, these are not normal empty shelves, but shelving areas specifically dedicated to non-book purposes.
 
 ## Technology
 
-The Digital Twin 3 is a static, client-side web application built primarily with:
+This is a client-side web application built primarily with:
 
 - **Leaflet** — interactive visualization of the Collection Wall.
 - **GeoJSON** — storage of shelf and placeholder-book geometry.
@@ -169,7 +173,7 @@ The Digital Twin 3 is a static, client-side web application built primarily with
 - **Papa Parse** — client-side parsing of Power BI CSV exports.
 - **R** — generation and processing of the static wall geometry and configuration data.
 - **`sf`** — creation and manipulation of spatial geometry in R.
-- **Excel** — source format for the manually defined wall matrix and small configuration datasets (e.g. Expo areas).
+- **Excel** — source format for the manually defined wall matrix and small configuration datasets (e.g. Expo areas, faculty colors).
 - **SAP Power BI** — export of current library catalogue metadata used to reconstruct the collection at runtime.
 - **GitHub Pages** — hosting of the static public application.
 
