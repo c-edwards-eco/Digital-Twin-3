@@ -724,7 +724,7 @@ function processCatalogueFile(file) {
 
     // Power BI adds an extra first row before
     // the actual CSV header. Remove it before
-    // Papa Parse processes the file.
+    // Papa Parse processes the file
     beforeFirstChunk: (chunk) => {
       const lines = chunk.split(/\r?\n/);
 
@@ -864,7 +864,7 @@ function processCatalogueFile(file) {
         // ---------------------------------------------------------------
 
         // First faculty encountered for a bookcase
-        // determines its display color.
+        // determines its display color
         if (!bookcaseFacultyMap.has(bookcaseId)) {
           bookcaseFacultyMap.set(bookcaseId, faculty);
         }
@@ -1018,7 +1018,7 @@ function searchByCallNumber(query) {
 function openBookcaseExplorer(bookcaseId) {
   const id = String(bookcaseId);
 
-  // Only catalogue-occupied bookcases are currently browsable.
+  // Only catalogue-occupied bookcases are currently browsable
   if (occupiedBookcases === null || !occupiedBookcases.has(id)) {
     return;
   }
@@ -1128,12 +1128,12 @@ function initializeBookcaseExplorer() {
 
   const closeButton = document.getElementById("bookcase-modal-close");
 
-  // Close button.
+  // Close button
   if (closeButton) {
     closeButton.addEventListener("click", closeBookcaseExplorer);
   }
 
-  // Clicking the grey backdrop closes the explorer.
+  // Clicking the grey backdrop closes the explorer
   if (overlay) {
     overlay.addEventListener("click", (event) => {
       if (event.target === overlay) {
@@ -1142,7 +1142,7 @@ function initializeBookcaseExplorer() {
     });
   }
 
-  // Escape key closes the explorer.
+  // Escape key closes the explorer
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && overlay && !overlay.hidden) {
       closeBookcaseExplorer();
@@ -1314,16 +1314,16 @@ function setCallNumberSearchEnabled(enabled) {
 async function initializeMapData() {
   try {
     // Faculty colors must exist before
-    // shelves or Expo areas are styled.
+    // shelves or Expo areas are styled
     await loadFacultyColors();
 
     addFacultyLegend();
 
-    // Load physical shelf geometry.
+    // Load physical shelf geometry
     await Promise.all([loadFrontShelves(), loadBackShelves()]);
 
-    // Load placeholder geometry into memory.
-    // It remains invisible until catalogue data is uploaded.
+    // Load placeholder geometry into memory
+    // It remains invisible until catalogue data is uploaded
     await Promise.all([
       loadPlaceholderBooks(
         "data/placeholder_books_front.geojson",
@@ -1343,10 +1343,10 @@ async function initializeMapData() {
 }
 
 function initializeBaseLayers() {
-  // Front is the default side.
+  // Front is the default side
   frontGroup.addTo(map);
 
-  // Front/back selector.
+  // Front/back selector
   L.control
     .layers(
       {
@@ -1361,7 +1361,7 @@ function initializeBaseLayers() {
     )
     .addTo(map);
 
-  // Catalogue upload + call-number search.
+  // Catalogue upload + call-number search
   map.addControl(new CatalogueUploadControl());
 
   initializeCatalogueControls();
