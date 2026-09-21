@@ -180,7 +180,7 @@ set.seed(1234)
 
 ######### reserved / exhibition spaces ##########################################
 
-emptyspace <- read_excel("emptyspace.xlsx") %>%
+reserved_areas <- read_excel("reserved_areas.xlsx") %>%
   transmute(
     Start   = as.integer(Start),
     End     = as.integer(End),
@@ -188,81 +188,14 @@ emptyspace <- read_excel("emptyspace.xlsx") %>%
     faculty = as.character(Faculty)
   )
 
-
-# Expand ranges:
-#
-# 4–6 CEG Expo
-#
-# becomes:
-#
-# 4 CEG Expo
-# 5 CEG Expo
-# 6 CEG Expo
-
-reserved_bookcases <- emptyspace %>%
-  rowwise() %>%
-  mutate(
-    bookcase_id = list(seq(Start, End))
-  ) %>%
-  unnest(bookcase_id) %>%
-  ungroup() %>%
-  select(
-    bookcase_id,
-    reserved_name = Name,
-    reserved_faculty = faculty
-  )
-
-
-reserved_ids <- reserved_bookcases$bookcase_id
-
-
-######### attach reservation data to front shelves ##############################
-
-# Remove these columns if this section has already been run.
-# This makes the code safe to rerun interactively.
-
-shelves_front <- shelves_front %>%
-  select(
-    -any_of(c(
-      "reserved",
-      "reserved_name",
-      "reserved_faculty"
-    ))
-  ) %>%
-  left_join(
-    reserved_bookcases,
-    by = "bookcase_id"
-  ) %>%
-  mutate(
-    reserved = !is.na(reserved_name)
-  )
-
-
-######### attach reservation data to back shelves ###############################
-
-shelves_back <- shelves_back %>%
-  select(
-    -any_of(c(
-      "reserved",
-      "reserved_name",
-      "reserved_faculty",
-      "physical_bookcase_id"
-    ))
-  ) %>%
-  mutate(
-    physical_bookcase_id = as.integer(
-      sub("B$", "", bookcase_id)
-    )
-  ) %>%
-  left_join(
-    reserved_bookcases,
-    by = c(
-      "physical_bookcase_id" = "bookcase_id"
-    )
-  ) %>%
-  mutate(
-    reserved = !is.na(reserved_name)
-  )
+write(
+  toJSON(
+    reserved_areas,
+    pretty = TRUE,
+    auto_unbox = TRUE
+  ),
+  "reserved_areas.json"
+)
 
 ######### placeholder book geometry helper ######################################
 
@@ -354,8 +287,7 @@ make_placeholder_books <- function(
 generate_placeholder_layer <- function(shelves, n_books = 20) {
   
   # Reserved/exhibition bookcases do not receive fake books.
-  shelves_to_fill <- shelves %>%
-    filter(!reserved)
+  shelves_to_fill <- shelves
   
   book_features <- vector("list", nrow(shelves_to_fill))
   

@@ -58,26 +58,29 @@ const backGroup = L.layerGroup([shelvesBackGroup, placeholderBooksBackGroup]);
 // APPLICATION STATE
 // =============================================================================
 
-// Shelf layers.
+// Shelf layers
 let shelvesFrontLayer;
 let shelvesBackLayer;
 
 // Original placeholder GeoJSON, kept unchanged in memory so it can be
-// re-filtered after catalogue upload.
+// re-filtered after catalogue upload
 let placeholderBooksFrontData = null;
 let placeholderBooksBackData = null;
 
-// Faculty configuration.
+// Faculty configuration
 let facultyColors = [];
 let facultyColorMap = new Map();
 
-// Catalogue data exists only for the lifetime of this page.
+// Reserved / exhibition areas
+let reservedAreas = [];
+
+// Catalogue data exists only for the lifetime of this page
 let catalogueRows = [];
 
-// null means no catalogue has been loaded yet.
+// null means no catalogue has been loaded yet
 let occupiedBookcases = null;
 
-// Catalogue-derived lookups.
+// Catalogue-derived lookups
 let bookcaseFacultyMap = new Map();
 let bookcaseCallNumberRangeMap = new Map();
 let callNumberIndex = [];
@@ -317,6 +320,14 @@ function getBookcaseRangeText(bookcaseId) {
   return `${range.start} – ${range.end}`;
 }
 
+async function loadReservedAreas() {
+  const response = await fetch("data/reserved_areas.json");
+
+  checkResponse(response, "data/reserved_areas.json");
+
+  reservedAreas = await response.json();
+}
+
 // =============================================================================
 // FACULTY COLORS
 // =============================================================================
@@ -392,57 +403,73 @@ function getFacultyColor(faculty) {
 // STATIC MAP UI
 // =============================================================================
 
+function getReservedArea(bookcaseId) {
+  const rawId = String(bookcaseId);
+
+  const physicalBookcaseId = Number(rawId.replace(/B$/i, ""));
+
+  return (
+    reservedAreas.find(
+      (area) =>
+        physicalBookcaseId >= area.Start && physicalBookcaseId <= area.End,
+    ) || null
+  );
+}
+
 function addReservedAreaLabels(shelfLayer) {
   expoLabelsFrontGroup.clearLayers();
 
-  const reservedAreas = new Map();
+  reservedAreas.forEach((area) => {
+    const layers = [];
 
-  // Group all reserved shelf polygons by reserved name.
-  shelfLayer.eachLayer((layer) => {
-    const feature = layer.feature;
-    const props = feature?.properties || {};
+    shelfLayer.eachLayer((layer) => {
+      const bookcaseId =
+        getBookcaseLabel(layer.feature);
 
-    const reservedName = String(props.reserved_name || "").trim();
+      const physicalBookcaseId = Number(
+        String(bookcaseId).replace(/B$/i, "")
+      );
 
-    if (!props.reserved || !reservedName) {
+      if (
+        physicalBookcaseId >= area.Start &&
+        physicalBookcaseId <= area.End
+      ) {
+        layers.push(layer);
+      }
+    });
+
+    if (!layers.length) {
       return;
     }
 
-    if (!reservedAreas.has(reservedName)) {
-      reservedAreas.set(reservedName, []);
-    }
-
-    reservedAreas.get(reservedName).push(layer);
-  });
-
-  // Create one label per reserved area,
-  // centered across the entire reserved range
-  reservedAreas.forEach((layers, areaName) => {
     let bounds = null;
 
     layers.forEach((layer) => {
       if (!bounds) {
-        bounds = L.latLngBounds(layer.getBounds());
+        bounds = L.latLngBounds(
+          layer.getBounds()
+        );
       } else {
-        bounds.extend(layer.getBounds());
+        bounds.extend(
+          layer.getBounds()
+        );
       }
     });
 
-    if (!bounds) {
-      return;
-    }
-
     const center = bounds.getCenter();
 
-    const label = L.marker(center, {
-      interactive: false,
+    const label = L.marker(
+      center,
+      {
+        interactive: false,
 
-      icon: L.divIcon({
-        className: "expo-label",
-        html: `<div>${areaName}</div>`,
-        iconSize: null,
-      }),
-    });
+        icon: L.divIcon({
+          className: "expo-label",
+          html: `<div>${area.Name}</div>`,
+          iconSize: null,
+        }),
+      }
+    );
 
     expoLabelsFrontGroup.addLayer(label);
   });
@@ -510,42 +537,36 @@ function addFacultyLegend() {
 // prototype area
 
 function shelfStyle(feature) {
-  const props = feature.properties || {};
+  const bookcaseId = getBookcaseLabel(feature);
 
-  // Default: white wireframe with no fill.
+  const reservedArea = getReservedArea(bookcaseId);
+
+  // Default: white wireframe with no fill
   let fillColor = "#ffffff";
   let fillOpacity = 0;
 
-  // Permanent Expo areas get a faculty-colored background.
-  if (props.reserved && props.reserved_faculty) {
-    fillColor = getFacultyColor(props.reserved_faculty);
+  // Reserved / exhibition areas get a faculty-colored background
+  if (reservedArea) {
+    fillColor = getFacultyColor(reservedArea.faculty);
 
     fillOpacity = 0.9;
   }
 
-  const style = {
+  return {
     color: "#ffffff",
     weight: 1.2,
     fillColor,
     fillOpacity,
   };
-
-  return style; 
 }
 
 function addShelfInteraction(feature, layer) {
-  const props = feature.properties || {};
+  const bookcaseId =
+    getBookcaseLabel(feature);
 
-  const bookcaseId = getBookcaseLabel(feature);
-
-  const reservedName = String(props.reserved_name || "").trim();
-
-  // Expo areas already have permanent labels
-  if (props.reserved && reservedName) {
-    return;
-  }
-
-  layer.bindTooltip(getBookcaseTooltipText(bookcaseId));
+  layer.bindTooltip(
+    getBookcaseTooltipText(bookcaseId)
+  );
 
   layer.on({
     mouseover: () => {
@@ -656,9 +677,7 @@ function renderPlaceholderBooks(data, targetGroup) {
       const bookcaseId = getBookcaseLabel(feature);
       const shelfId = feature.properties?.shelf_id;
 
-      return (
-        occupiedBookcases.has(bookcaseId)
-      );
+      return occupiedBookcases.has(bookcaseId);
     });
   }
 
@@ -1315,7 +1334,7 @@ async function initializeMapData() {
   try {
     // Faculty colors must exist before
     // shelves or Expo areas are styled
-    await loadFacultyColors();
+    await Promise.all([loadFacultyColors(), loadReservedAreas()]);
 
     addFacultyLegend();
 

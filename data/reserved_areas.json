@@ -1,0 +1,68 @@
+[
+  {
+    "Start": 4,
+    "End": 6,
+    "Name": "CEG Expo",
+    "faculty": "CEG"
+  },
+  {
+    "Start": 20,
+    "End": 22,
+    "Name": "TPM Expo",
+    "faculty": "TPM"
+  },
+  {
+    "Start": 40,
+    "End": 42,
+    "Name": "EEMCS Expo",
+    "faculty": "EEMCS"
+  },
+  {
+    "Start": 54,
+    "End": 56,
+    "Name": "ME Expo",
+    "faculty": "ME"
+  },
+  {
+    "Start": 77,
+    "End": 79,
+    "Name": "AE Expo",
+    "faculty": "AE"
+  },
+  {
+    "Start": 82,
+    "End": 84,
+    "Name": "BK Expo",
+    "faculty": "BK"
+  },
+  {
+    "Start": 94,
+    "End": 96,
+    "Name": "IDE Expo",
+    "faculty": "IDE"
+  },
+  {
+    "Start": 120,
+    "End": 122,
+    "Name": "AS Expo",
+    "faculty": "AS"
+  },
+  {
+    "Start": 130,
+    "End": 132,
+    "Name": "Expo",
+    "faculty": "Other"
+  },
+  {
+    "Start": 152,
+    "End": 154,
+    "Name": "Art Library",
+    "faculty": "Other"
+  },
+  {
+    "Start": 176,
+    "End": 178,
+    "Name": "Heritage Vitrine",
+    "faculty": "Other"
+  }
+]
