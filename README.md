@@ -93,6 +93,8 @@ Faculty colors are maintained separately in:
 
 `faculty_colors.json`
 
+Faculty colors can be directly updated in the JSON file, or via updating the excel file and re-running the R script.
+
 When catalogue data is loaded, the value in the faculty field (second call number suffix) is matched against the configured faculty colors.
 
 Recognized faculties receive their corresponding color. Unrecognized values use the configured **Other** color. These are currently all located on the first floor of the book wall.
@@ -104,6 +106,16 @@ Some collection areas are visually differentiated from the main faculty collecti
 is recognized as belonging to BK and displayed using a lighter variant of the BK color.
 
 Permanent exhibition areas are also colored according to their associated faculty and labelled directly on the map.
+
+## Reserved and expo areas
+
+Areas reserved for exhibitions rather than books are maintained separately in:
+
+`reserved_areas.json`
+
+The application processes these areas on the front-end and assigns the associated bookcases the fill color configured in the JSON. The application also generates permanent labels for these areas. This is independent of the catalogue data and therefore is maintained separately. 
+
+Like the faculty colors, the JSON can be directly edited or edited in the accompanying excel file and re-generated with the R script. 
 
 ## Wall geometry
 
@@ -147,21 +159,6 @@ The catalogue records themselves are then used to determine information such as:
 - Call number ranges
 
 This keeps the static map lightweight while allowing the current collection arrangement to be reconstructed dynamically.
-
-## Reserved and exhibition areas
-
-Not every bookcase in the Collection Wall is used for conventional shelving.
-
-Reserved ranges, including faculty exhibition areas, are defined separately from the catalogue collection and are incorporated into the static wall geometry.
-
-These areas:
-
-- Do not receive placeholder books.
-- Are shaded using the corresponding faculty color.
-- Can have permanent labels such as `BK Expo` or `AE Expo`.
-- Are visible without loading catalogue data.
-
-This information represents permanent or semi-permanent characteristics of the physical wall rather than bibliographic metadata and therefore lives outside the library catalogue. In essence, these are not normal empty shelves, but shelving areas specifically dedicated to non-book purposes.
 
 ## Technology
 
