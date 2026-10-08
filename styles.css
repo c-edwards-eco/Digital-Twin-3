@@ -94,6 +94,8 @@ body {
   border-radius: 5px;
 
   overflow-y: auto;
+
+  display: none; /* TEMP */
 }
 
 
