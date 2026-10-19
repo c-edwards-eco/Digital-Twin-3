@@ -172,39 +172,20 @@ mapview( # check bookcases - should be 180
 # catalogue data loaded by the browser will later determine which
 # bookcases are actually shown.
 
-books_per_shelf <-10
+books_per_shelf <- 5
 
 # fixed seed means the "random" books look the same every time
 # we regenerate the static geometry.
 set.seed(1234)
 
-######### reserved / exhibition spaces ##########################################
-
-reserved_areas <- read_excel("reserved_areas.xlsx") %>%
-  transmute(
-    Start   = as.integer(Start),
-    End     = as.integer(End),
-    Name    = as.character(Name),
-    faculty = as.character(Faculty)
-  )
-
-write(
-  toJSON(
-    reserved_areas,
-    pretty = TRUE,
-    auto_unbox = TRUE
-  ),
-  "reserved_areas.json"
-)
-
 ######### placeholder book geometry helper ######################################
 
 make_placeholder_books <- function(
     shelf_geom,
-    n_books = 20,
-    width_ratio = 0.9,
-    gap_ratio = 0.10,
-    jitter_ratio = 0.15,
+    n_books = 5,
+    books_width_ratio = 0.9,
+    gap_ratio = 0.1,
+    jitter_ratio = 0.08,
     bottom_padding_ratio = 0.02
 ) {
   
@@ -218,73 +199,150 @@ make_placeholder_books <- function(
   shelf_width  <- xmax - xmin
   shelf_height <- ymax - ymin
   
-  bottom_padding <- shelf_height * bottom_padding_ratio
+  bottom_padding <-
+    shelf_height * bottom_padding_ratio
   
-  total_book_width <- shelf_width * width_ratio
-  base_book_width  <- total_book_width / n_books
-  gap_width        <- base_book_width * gap_ratio
   
-  book_width <- (
-    total_book_width -
-      gap_width * (n_books - 1)
-  ) / n_books
+  # ----------------------------------------------------------
+  # Horizontal layout
+  # ----------------------------------------------------------
   
-  x_offset <- (shelf_width - total_book_width) / 2
+  total_books_width <-
+    shelf_width * books_width_ratio
   
-  books <- vector("list", n_books)
+  gap_width <-
+    shelf_width * gap_ratio
   
-  current_x <- xmin + x_offset
+  total_gap_width <-
+    gap_width * (n_books - 1)
+  
+  
+  book_width <-
+    (
+      total_books_width -
+        total_gap_width
+    ) / n_books
+  
+  
+  # Center the whole group of books on the shelf
+  used_width <-
+    book_width * n_books +
+    total_gap_width
+  
+  x_offset <-
+    (shelf_width - used_width) / 2
+  
+  
+  books <- vector(
+    "list",
+    n_books
+  )
+  
+  current_x <-
+    xmin + x_offset
+  
   
   for (i in seq_len(n_books)) {
     
-    # Small horizontal irregularity
-    jitter <- runif(
-      1,
-      -book_width * jitter_ratio,
-      book_width * jitter_ratio
-    )
+    # Small jitter, but never enough to close the gap
+    max_jitter <-
+      min(
+        book_width * jitter_ratio,
+        gap_width * 0.25
+      )
     
-    x0 <- current_x + jitter
-    x1 <- x0 + book_width
+    jitter <-
+      runif(
+        1,
+        -max_jitter,
+        max_jitter
+      )
     
-    # Keep book inside shelf bounds
+    
+    x0 <-
+      current_x + jitter
+    
+    x1 <-
+      x0 + book_width
+    
+    
+    # Keep inside shelf bounds
     if (x0 < xmin) {
-      x1 <- x1 + (xmin - x0)
-      x0 <- xmin
+      
+      shift <-
+        xmin - x0
+      
+      x0 <-
+        x0 + shift
+      
+      x1 <-
+        x1 + shift
     }
+    
     
     if (x1 > xmax) {
-      x0 <- x0 - (x1 - xmax)
-      x1 <- xmax
+      
+      shift <-
+        x1 - xmax
+      
+      x0 <-
+        x0 - shift
+      
+      x1 <-
+        x1 - shift
     }
     
-    # Random book height
-    height_factor <- runif(1, 0.50, 0.72)
     
-    y0 <- ymin + bottom_padding
-    y1 <- y0 + shelf_height * height_factor
+    # --------------------------------------------------------
+    # Vertical layout
+    # --------------------------------------------------------
     
-    books[[i]] <- st_polygon(list(matrix(
-      c(
-        x0, y0,
-        x1, y0,
-        x1, y1,
-        x0, y1,
-        x0, y0
-      ),
-      ncol = 2,
-      byrow = TRUE
-    )))
+    height_factor <-
+      runif(
+        1,
+        0.50,
+        0.72
+      )
     
-    current_x <- current_x + book_width + gap_width
+    y0 <-
+      ymin + bottom_padding
+    
+    y1 <-
+      y0 +
+      shelf_height * height_factor
+    
+    
+    books[[i]] <-
+      st_polygon(
+        list(
+          matrix(
+            c(
+              x0, y0,
+              x1, y0,
+              x1, y1,
+              x0, y1,
+              x0, y0
+            ),
+            ncol = 2,
+            byrow = TRUE
+          )
+        )
+      )
+    
+    
+    current_x <-
+      current_x +
+      book_width +
+      gap_width
   }
+  
   
   books
 }
 
 ######### generate placeholder books for shelves ################################
 
-generate_placeholder_layer <- function(shelves, n_books = 20) {
+generate_placeholder_layer <- function(shelves, n_books = 5) {
   
   # Reserved/exhibition bookcases do not receive fake books.
   shelves_to_fill <- shelves
@@ -377,6 +435,26 @@ geojson_write(
 geojson_write(
   placeholder_books_back,
   file = "placeholder_books_back.geojson"
+)
+
+
+######### reserved / exhibition spaces ##########################################
+
+reserved_areas <- read_excel("Excel files/reserved_areas.xlsx") %>%
+  transmute(
+    Start   = as.integer(Start),
+    End     = as.integer(End),
+    Name    = as.character(Name),
+    faculty = as.character(Faculty)
+  )
+
+write(
+  toJSON(
+    reserved_areas,
+    pretty = TRUE,
+    auto_unbox = TRUE
+  ),
+  "reserved_areas.json"
 )
 
 ######### faculty colors #########################################################
